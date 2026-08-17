@@ -5,30 +5,32 @@ Tài liệu này mô tả quy trình Git chính thức cho project VLive Docs (N
 ## Mô hình branch
 
 ```
-main
+development
   │
   ├── feature/xxx
   ├── fix/xxx
   ├── docs/xxx
   ├── refactor/xxx
   └── chore/xxx
+
+development ── (admin tự merge tay) ──► main
 ```
 
-`main` luôn là **source mới nhất**, không phải production. `main` không tự động deploy — chỉ khi tạo tag mới (`vX.Y.Z`) thì CI mới build và publish snapshot, đồng thời cập nhật `/latest/`. Production thực chất là `/latest/` trên VPS, được cập nhật qua tag chứ không phải qua mỗi lần merge vào `main`.
+- **`development`**: nơi tích hợp hàng ngày. Mọi `feature/*`, `fix/*`, `docs/*`, `refactor/*`, `chore/*` đều tạo từ `development` và PR trở lại `development`. Đây là nhánh mọi người làm việc chung.
+- **`main`**: là **production**. Merge vào `main` là release ngay lập tức — CI tự động tính version, tạo tag, build và publish. Vì vậy `development → main` **không tự động**, chỉ admin tự tay merge khi thấy nội dung trên `development` đã sẵn sàng phát hành. Đây là bước quan trọng nên cố tình không giao cho CI hay quy trình tự động quyết định.
 
-Hiện tại project đã có nhiều người cùng phát triển, nhưng **chưa thêm** `develop`, `staging`, hay `release/*` vì docs không cần môi trường staging riêng — mọi thay đổi đi qua Pull Request và kiểm tra kỹ trước khi merge vào `main` là đủ để kiểm soát chất lượng.
-
-Chỉ cân nhắc thêm `develop`/`staging` khi:
-- Cần một môi trường xem trước (preview) tách biệt khỏi production, hoặc
-- Nhiều thay đổi lớn cần gộp và kiểm thử cùng lúc trước khi phát hành.
-
-Cho đến lúc đó, giữ mô hình một nhánh `main` duy nhất + các nhánh ngắn hạn theo tính năng để tránh phức tạp hóa quy trình không cần thiết.
+```
+feature/* ─┐
+fix/*      ─┼─ PR ─► development ─── admin tự merge tay ─► main ─► CI tự tag + release
+docs/*     ─┘
+```
 
 ### Quy định đặt tên branch
 
 | Loại | Quy tắc | Ví dụ |
 |---|---|---|
-| Source mới nhất | `main` | `main` |
+| Tích hợp | `development` | `development` |
+| Production | `main` | `main` |
 | Thêm chức năng | `feature/<name>` | `feature/version-switcher` |
 | Sửa bug | `fix/<name>` | `fix/sidebar-mobile` |
 | Sửa nội dung docs lớn | `docs/<name>` | `docs/ios-integration` |
@@ -38,7 +40,7 @@ Cho đến lúc đó, giữ mô hình một nhánh `main` duy nhất + các nhá
 ### Quy trình làm việc mẫu
 
 ```bash
-git checkout main
+git checkout development
 git pull
 git checkout -b feature/version-switcher
 
@@ -52,12 +54,23 @@ git push -u origin feature/version-switcher
 Sau đó tạo Pull Request:
 
 ```
-feature/version-switcher → PR → main
+feature/version-switcher → PR → development
 ```
 
-Merge vào `main` **chưa** lên production — nội dung chỉ thật sự lên production khi có tag mới và CI publish snapshot (xem mục [Build static snapshot theo version](#build-static-snapshot-theo-version)).
+Merge vào `development` **chưa** lên production — chỉ là gộp vào nhánh tích hợp chung. Nội dung chỉ thật sự lên production khi admin tự tay merge `development → main` (xem mục [Build static snapshot theo version](#build-static-snapshot-theo-version)).
 
 Merge xong thì xóa branch đã hoàn thành, không giữ lại đống branch cũ.
+
+### Admin release: merge `development` vào `main`
+
+```bash
+git checkout main
+git pull
+git merge development
+git push origin main
+```
+
+Đây là thao tác thủ công, chỉ admin thực hiện khi đã xem xét nội dung trên `development` đủ ổn định để phát hành — không có PR tự động, không có CI nào tự ý làm bước này.
 
 ## Quy định commit (Conventional Commits)
 
@@ -113,20 +126,19 @@ v2.0.0   SDK/docs thay đổi lớn
 - ❌ `release-v1`
 - ❌ `version-1.0.0`
 
-### Quy trình release
+### Quy trình release — tự động tag, chỉ merge lên `main` là thủ công
 
-```bash
-git checkout main
-git pull
-git tag -a v1.0.0 -m "VLive Docs v1.0.0"
-git push origin v1.0.0
-```
+Không ai chạy `git tag` thủ công. Điểm duy nhất cần tay người là **quyết định khi nào merge `development → main`** (mục trên). Sau khi merge đó xảy ra, CI tự tính version tiếp theo dựa trên Conventional Commits của các commit vừa đưa vào `main`, so với tag cao nhất hiện có:
 
-GitHub Release cũng dùng chính tag đó (`v1.0.0`).
+- Có commit `feat:` → tăng **MINOR** (`1.0.0` → `1.1.0`)
+- Chỉ có `fix:`, `docs:`, `style:`, `refactor:`, `chore:` → tăng **PATCH** (`1.0.0` → `1.0.1`)
+- Có `BREAKING CHANGE:` trong body commit (hoặc `feat!:`) → tăng **MAJOR** (`1.0.0` → `2.0.0`)
+
+CI tự tạo tag `vX.Y.Z` tương ứng, push tag đó, tạo GitHub Release, rồi build/publish luôn — toàn bộ trong cùng một lần chạy ngay sau khi `main` được cập nhật.
 
 ## Build static snapshot theo version
 
-Mỗi khi push một tag `v*.*.*`, CI phải tự động build và publish snapshot cho version đó lên VPS, đồng thời cập nhật con trỏ `latest` sang version mới nhất — không làm thủ công để tránh quên hoặc lệch version.
+Mỗi khi `main` được cập nhật (do admin merge từ `development`), CI phải tự động tính version mới, tạo tag, build và publish snapshot cho version đó lên VPS, đồng thời cập nhật con trỏ `latest` — không làm thủ công để tránh quên hoặc lệch version.
 
 Next/Nextra build ra **static export**, output thống nhất là thư mục `out/` (`next build && next export`, hoặc `output: 'export'` trong `next.config`). Không dùng `.next` — đó là thư mục build nội bộ của Next.js, không phải static export dùng để deploy.
 
@@ -159,49 +171,54 @@ Nginx chỉ serve static trực tiếp từ `/var/www/vlive-docs/` — không c�
 
 ### `versions.json` sống thẳng trên VPS
 
-Điểm quan trọng: mỗi lần CI chạy chỉ checkout đúng **một** tag, nên nó không tự biết những version nào đã từng release trước đó. `versions.json` vì vậy **không được sinh ra từ source trong `main`**, mà là file thật nằm ngay tại `/var/www/vlive-docs/versions.json` trên VPS — tồn tại độc lập, tích lũy qua từng lần release.
+Điểm quan trọng: mỗi lần CI chạy chỉ thấy đúng trạng thái `main` tại thời điểm đó, nên nó không tự biết những version nào đã từng release trước đó. `versions.json` vì vậy **không được sinh ra từ source trong `main`**, mà là file thật nằm ngay tại `/var/www/vlive-docs/versions.json` trên VPS — tồn tại độc lập, tích lũy qua từng lần release.
 
 Không cần S3 hay nhánh `gh-pages`. CI chỉ cần SSH vào VPS: đọc `versions.json` hiện tại → merge version mới vào → ghi đè lại đúng vị trí đó.
 
-### Quy trình CI khi có tag mới (GitHub Actions)
+### Quy trình CI khi `main` được cập nhật (GitHub Actions)
 
-Trigger: `on: push: tags: ["v*.*.*"]`
+Trigger: `on: push: branches: ["main"]` (tức là chạy ngay sau khi admin merge `development → main`)
 
 Các bước:
 
-1. Checkout đúng commit của tag (source code, để build).
-2. `npm ci && npm run build` → build ra `out/`.
-3. Rsync/scp `out/` lên VPS vào `/var/www/vlive-docs/versions/<version>/` (bỏ tiền tố `v`, ví dụ tag `v2.0.0` → thư mục `2.0.0`).
-4. SSH vào VPS, chạy script trên VPS để: đọc `versions.json` hiện tại, so sánh version vừa deploy với `"latest"` (so sánh theo Semantic Versioning, không so sánh chuỗi).
-5. Nếu version mới là cao nhất:
-   - Đồng bộ `/var/www/vlive-docs/latest/` bằng đúng nội dung `/versions/<version>/` vừa upload (ví dụ `rsync --delete`).
-   - Cập nhật `"latest"` trong `versions.json` sang version mới.
-6. Luôn thêm version mới vào mảng `"versions"` trong `versions.json` (merge vào danh sách cũ, không thay thế), kể cả khi không phải bản cao nhất (ví dụ phát hành vá cho version cũ, `v1.0.2` sau khi `v2.0.0` đã ra).
-7. Ghi `versions.json` đã cập nhật đè lại đúng vị trí `/var/www/vlive-docs/versions.json`.
+1. Checkout `main` (đã bao gồm nội dung vừa merge từ `development`).
+2. Đọc các commit message kể từ tag gần nhất, xác định loại bump (MAJOR/MINOR/PATCH) theo Conventional Commits.
+3. Tính version mới, tạo tag `vX.Y.Z` và push tag đó lên repo (đồng thời tạo GitHub Release).
+4. `npm ci && npm run build` → build ra `out/`.
+5. Rsync/scp `out/` lên VPS vào `/var/www/vlive-docs/versions/<version>/` (bỏ tiền tố `v`).
+6. SSH vào VPS, chạy script trên VPS để: đọc `versions.json` hiện tại, so sánh version vừa deploy với `"latest"` (so sánh theo Semantic Versioning, không so sánh chuỗi).
+7. Vì trigger là cập nhật `main`, version mới **luôn** là cao nhất — đồng bộ `/var/www/vlive-docs/latest/` bằng đúng nội dung `/versions/<version>/` vừa upload (ví dụ `rsync --delete`), và cập nhật `"latest"` trong `versions.json`.
+8. Thêm version mới vào mảng `"versions"` trong `versions.json` (merge vào danh sách cũ, không thay thế).
+9. Ghi `versions.json` đã cập nhật đè lại đúng vị trí `/var/www/vlive-docs/versions.json`.
 
-Ví dụ workflow rút gọn:
+Ví dụ workflow rút gọn (dùng [semantic-release](https://github.com/semantic-release/semantic-release) hoặc script tự viết để tính version từ commit log):
 
 ```yaml
-name: Build & Deploy Docs Version
+name: Auto Version & Deploy
 on:
   push:
-    tags: ["v*.*.*"]
+    branches: ["main"]
 
 jobs:
-  build-and-deploy:
+  release:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: npm ci && npm run build   # output: out/
-      - name: Extract version
-        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> $GITHUB_ENV
+        with:
+          fetch-depth: 0   # cần full history để đọc hết commit log từ tag gần nhất
+      - name: Determine next version & create tag
+        id: version
+        run: node scripts/next-version.js   # đọc conventional commits, in ra VERSION, tạo + push tag vX.Y.Z
+      - run: npm ci && npm run build        # output: out/
       - name: Upload snapshot to VPS
-        run: rsync -avz --delete out/ user@vps:/var/www/vlive-docs/versions/${{ env.VERSION }}/
+        run: rsync -avz --delete out/ user@vps:/var/www/vlive-docs/versions/${{ steps.version.outputs.VERSION }}/
       - name: Update latest + versions.json (chạy trên VPS qua SSH)
-        run: ssh user@vps "bash /var/www/vlive-docs/scripts/publish-version.sh ${{ env.VERSION }}"
+        run: ssh user@vps "bash /var/www/vlive-docs/scripts/publish-version.sh ${{ steps.version.outputs.VERSION }}"
 ```
 
-`scripts/publish-version.sh` (chạy trên VPS) chịu trách nhiệm: đọc `versions.json`, so sánh semver với `latest` hiện tại, và chỉ `rsync --delete` snapshot vào `/latest/` + cập nhật `versions.json` nếu version mới lớn hơn.
+`scripts/next-version.js` chịu trách nhiệm: đọc commit log kể từ tag cao nhất hiện có, xác định bump theo Conventional Commits, tạo và push tag mới, xuất `VERSION` cho các step sau dùng.
+
+`scripts/publish-version.sh` (chạy trên VPS) chịu trách nhiệm: đọc `versions.json`, cập nhật `latest` (`rsync --delete` snapshot vào `/latest/`) và ghi lại `versions.json` — vì mọi lần chạy đều là bản mới nhất nên không cần so sánh điều kiện.
 
 **Nguyên tắc quan trọng:**
 
@@ -214,24 +231,54 @@ jobs:
   ```
 
   không đè lên `v1.0.0`.
-- `/latest/` không phải version cố định — nó luôn trỏ theo bản cao nhất theo semver, tự động cập nhật mỗi lần có tag mới cao hơn.
+- `/latest/` không phải version cố định — nó luôn trỏ theo bản cao nhất theo semver, tự động cập nhật mỗi lần `main` có version mới cao hơn.
 - Không tự chuyển `latest` khi phát hành bản vá cho version cũ hơn bản đang là latest (ví dụ ra `v1.0.2` trong khi `v2.0.0` đã tồn tại) — chỉ thêm vào `/versions/` và `versions.json`, không đụng `/latest/`.
 
-## Bảo vệ branch `main`
+## Nơi thử trước khi merge lên `main`
 
-Khi có nhiều người cùng sửa docs, bật branch protection cho `main`:
+Vì merge `development → main` là release ngay lập tức, **không còn bước đệm nào sau đó nữa** — nên phải chặn lỗi *trước khi* admin merge, chứ không phải sau.
+
+Có 2 lớp kiểm tra bắt buộc:
+
+1. **CI check trên mỗi PR vào `development`** — chạy `npm run build` (và lint/typecheck nếu có) ngay khi mở PR hoặc push thêm commit. PR không được merge vào `development` nếu bước này fail. Đây là job build-thử, không upload VPS, không tạo tag.
+2. **Preview/kiểm tra thủ công trên `development`** trước khi admin bấm merge lên `main` — chạy `npm run dev` hoặc `npm run build && npx serve out/` trên `development`, hoặc dùng CI để build preview link tạm (Cloudflare Pages/Vercel preview) để xem trực quan toàn bộ nội dung đã gộp.
+
+Ví dụ workflow riêng cho PR vào `development` (không đụng tới workflow auto-release ở `main`):
+
+```yaml
+name: PR Check
+on:
+  pull_request:
+    branches: ["development"]
+
+jobs:
+  build-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: npm ci && npm run build
+```
+
+## Bảo vệ branch
+
+Khi có nhiều người cùng sửa docs, bật branch protection:
 
 ```
-main
+development
 ├── ❌ không force push
-├── ❌ không delete
 ├── ❌ developer push thẳng
 ├── ✅ thay đổi qua Pull Request
 ├── ✅ build/check phải pass
 └── ✅ merge xong xóa branch
+
+main
+├── ❌ không force push
+├── ❌ không delete
+├── ❌ không ai push thẳng, kể cả admin — chỉ merge từ development
+└── ✅ chỉ admin có quyền merge development → main
 ```
 
-Vì project đã có nhiều người cùng phát triển, bật bắt buộc Pull Request và branch protection cho `main` ngay từ bây giờ — không push thẳng.
+Vì project đã có nhiều người cùng phát triển, bật bắt buộc Pull Request và branch protection ngay từ bây giờ — không push thẳng.
 
 ## Sơ đồ tổng quan
 
@@ -244,38 +291,37 @@ fix/*
   PR
    │
    ▼
- main
+development
    │
-   │ tạo tag khi release
+   │ admin tự merge tay khi sẵn sàng release
    ▼
-v1.2.0
+ main
    │
    ▼
 GitHub Actions
    │
-   ├── npm ci
-   ├── npm run build
+   ├── xác định version mới (Conventional Commits)
+   ├── tạo tag v1.2.0
+   ├── npm ci && npm run build
    ├── out/
    │
    ├── /versions/1.2.0/
-   │
    ├── update versions.json
    │
-   └── nếu 1.2.0 cao nhất
-          ↓
-       /latest/
+   └── /latest/
 ```
 
-`main` chỉ là source mới nhất — không tự deploy. Production (`/latest/` trên VPS) chỉ đổi khi có tag mới.
+`development` là nơi tích hợp — không tự deploy. Production (`/latest/` trên VPS) chỉ đổi khi admin merge `development → main`.
 
 ## Thứ tự triển khai lần đầu
 
 Khi chốt kiến trúc này cho một repo mới, làm theo thứ tự sau, không nhảy cóc:
 
-1. Tạo repo.
-2. Bật branch protection cho `main`.
-3. Đưa source Nextra lên qua branch `feature/init-nextra`.
-4. Merge PR vào `main`.
-5. Sau đó mới viết CI cho tag (build, upload VPS, cập nhật `versions.json`/`latest/`).
+1. Tạo repo, tạo nhánh `development` từ `main`.
+2. Bật branch protection cho cả `development` và `main`.
+3. Đưa source Nextra lên qua branch `feature/init-project`, PR vào `development`.
+4. Merge PR vào `development`.
+5. Admin merge `development → main` để có bản release đầu tiên.
+6. Sau đó mới viết CI cho tag (build, upload VPS, cập nhật `versions.json`/`latest/`), trigger theo push vào `main`.
 
 Không cần đụng đến phần version/deploy ngay từ commit đầu tiên.
