@@ -3,13 +3,10 @@
 import { Menu, MenuButton, MenuItem, MenuItems } from "@headlessui/react";
 import { usePathname } from "next/navigation";
 
-/**
- * Mỗi entry ở đây phải khớp với một location block thật trong
- * nginx/nginx.vdocs.conf (và PM2 process build với BASE_PATH tương ứng).
- * basePath: "" nghĩa là bản mới nhất, phục vụ ở gốc "/".
- * Xem quy tắc đồng bộ trong CONTRIBUTING.md > "Version switcher".
- */
-const VERSIONS = [{ label: "1.1.0", basePath: "" }];
+const VERSIONS = [
+  { label: "1.1.2", href: "/", current: true },
+  { label: "1.1.1", href: "/v1.1.1/", current: false },
+];
 
 export function VersionSwitch() {
   const pathname = usePathname();

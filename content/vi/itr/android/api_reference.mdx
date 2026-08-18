@@ -1,10 +1,6 @@
 # 04 — API Reference
 
-[← Về mục lục](README.md)
-
 Tất cả API dưới đây thuộc package gốc `vn.interactive`.
-
----
 
 ## 1. `OverlayManager`
 
@@ -42,8 +38,6 @@ class OverlayManager(
 > `LifecycleOverlay` hiện là interface rỗng (các hàm `onResume/onStop/onDestroy` đã được comment
 > trong mã) — SDK **không** tự bám vòng đời Activity ngoài việc observe LiveData.
 
----
-
 ## 2. `OverlayData` + `OverlayData.Builder`
 
 ```kotlin
@@ -64,8 +58,6 @@ val overlayData = OverlayData.Builder()
 ```kotlin
 enum class EnvInteractive { DEV, STG, PROD }
 ```
-
----
 
 ## 3. `OverlayEventListener` / `DefaultOverlayEventListener`
 
@@ -105,8 +97,6 @@ enum class EventOverlay {
 }
 ```
 
----
-
 ## 4. `PlayerChangeListener`
 
 ```kotlin
@@ -118,8 +108,6 @@ interface PlayerChangeListener {
 
 `playbackState` theo quy ước ExoPlayer: `1 = IDLE`, `2 = BUFFERING`, `3 = READY`, `4 = ENDED`.
 SDK ánh xạ: `1 → "idle"`, `3 → isPlaying ? "playing" : "paused"`, còn lại → `""`.
-
----
 
 ## 5. `OverlayView`
 
@@ -135,8 +123,6 @@ SDK ánh xạ: `1 → "idle"`, `3 → isPlaying ? "playing" : "paused"`, còn l�
 | `removeWebView(view)`, `removeWebViews()`, `clearViews()` | Gỡ view và huỷ tracking tương ứng |
 
 App chỉ cần khai báo view này trong XML; các hàm còn lại do SDK dùng.
-
----
 
 ## 6. Model chính
 
@@ -190,8 +176,6 @@ data class ActionReportResponse(
 )
 ```
 
----
-
 ## 7. Sự kiện Socket.IO
 
 ### 7.1. Server → SDK (lắng nghe)
@@ -232,8 +216,6 @@ data class ActionReportResponse(
 Tuỳ chọn kết nối: chỉ dùng `websocket`, tự reconnect, delay 5000ms (cả `reconnectionDelay` lẫn
 `reconnectionDelayMax`), `randomizationFactor = 0.4`.
 
----
-
 ## 8. Endpoint HTTP
 
 Base URL = `Const.INTERACTIVE_URL` (suy ra từ `EnvInteractive`).
@@ -266,8 +248,6 @@ Interceptor của `BaseRequest` tự thêm header `X-TENANT-ID`.
   }
 }
 ```
-
----
 
 ## 9. Giao thức JS bridge
 
@@ -316,8 +296,6 @@ window.addEventListener("message", (e) => { /* e.data chứa key + data */ });
 | `u=<userId>` | Riêng `PredictDialog` / `LuckyDialog` |
 | `timelineId`, `tenantId`, `deviceType`, `os` | Riêng overlay VOD (dựng trong `parseTimeLineListForVOD`) |
 
----
-
 ## 11. Hằng số hữu ích cho app
 
 ```kotlin
@@ -328,8 +306,6 @@ Const.VIDEO_VOD   // = 2
 Các biến toàn cục do SDK quản lý (app **không nên** ghi trực tiếp): `Const.USER_COOKIE`,
 `Const.USER_ID`, `Const.BJ_NAME`, `Const.IS_FAN_CLUB`, `Const.IS_VIP`, `Const.BET_AMOUNT`,
 `Const.INTERACTIVE_URL`, `Const.INTERACTIVE_SOCKET_URL`.
-
----
 
 ## 12. Dialog gợi ý (`SuggestType`) — SDK tự hiển thị
 
@@ -342,7 +318,3 @@ Các biến toàn cục do SDK quản lý (app **không nên** ghi trực tiếp
 | `SUGGEST_PREDICT_END` | "Dự đoán đã kết thúc!" | Sự kiện predict `END` |
 | `SUGGEST_LUCKY_END` | "Sự kiện đã kết thúc!" | Lucky kết thúc |
 | `SUGGEST_ANSWER_SUCCESS`, `SUGGEST_ERROR_OCCUR`, `SUGGEST_LOGIN` | Đã định nghĩa, chưa dùng trong luồng hiện tại | |
-
----
-
-[← Luồng hoạt động](03-luong-hoat-dong.md) · [Về mục lục](README.md) · [Tiếp: Tracking emit-ack →](05-tracking-emit-ack.md)
