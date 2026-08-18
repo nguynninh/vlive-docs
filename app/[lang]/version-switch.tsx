@@ -3,8 +3,8 @@
 import { Menu, MenuButton, MenuItem, MenuItems } from "@headlessui/react";
 
 const VERSIONS = [
-  { label: "1.1.0", href: "/", current: true },
-  { label: "1.0.3", href: "/v1.0.3/", current: false },
+  { label: "1.1.2", href: "/", current: true },
+  { label: "1.1.1", href: "/v1.1.1/", current: false },
 ];
 
 export function VersionSwitch() {
