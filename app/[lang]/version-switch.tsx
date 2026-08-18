@@ -4,8 +4,8 @@ import { Menu, MenuButton, MenuItem, MenuItems } from "@headlessui/react";
 import { usePathname } from "next/navigation";
 
 const VERSIONS = [
-  { label: "1.1.2", href: "/", current: true },
-  { label: "1.1.1", href: "/v1.1.1/", current: false },
+  { label: "1.1.3", href: "/", basePath: "/", current: true },
+  { label: "1.1.1", href: "/v1.1.1/", basePath: "/v1.1.2/", current: false },
 ];
 
 export function VersionSwitch() {
