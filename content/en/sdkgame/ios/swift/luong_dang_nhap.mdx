@@ -1,0 +1,140 @@
+# Login Flow – iTapSdk (sdk-game-ios-v3)
+
+This document describes the SDK's login flow, built from actual code:
+`Sdk+Authentication.swift`, `CheckLoginView.swift`, `LoginViewNew.swift`, `LoginWrapper.swift`.
+
+## Overview diagram
+
+```mermaid
+flowchart TD
+    A([App calls Sdk.login]) --> B{isShowLoginScreen?}
+    B -- Already showing --> Z([Skip])
+    B -- Not yet --> C["showLogin()<br/>GET PATH_GAME_CHECK_MAINTAIN"]
+
+    C --> D{API result}
+    D -- Network error / code != 0 --> E["realLogin(nil)"]
+    D -- code = 0 --> F[Subscribe to FCM topics]
+    F --> G{isMaintained?}
+    G -- Yes --> H([Show maintenance alert<br/>Stop the flow])
+    G -- No --> I["realLogin(value)"]
+
+    E --> J{Has accessToken<br/>and refreshToken?}
+    I --> J
+    J -- Token already available --> K["showCheckLoginUI<br/>CheckLoginView"]
+    J -- Not available --> L["showLoginUI<br/>LoginViewNew"]
+
+    %% ===== Automatic re-login =====
+    K --> M["deviceLogin()<br/>GET PATH_USER_INFO_V2"]
+    M --> N{Error code}
+    N -- code = 0 --> O["Save phone/email<br/>delegate loginSuccess<br/>registerTimerTask + authenGame<br/>Track login_success"]
+    O --> P([Close screen<br/>Login complete])
+    N -- code 86 / 1001 --> Q["doRefreshWithActionV2<br/>Refresh token → retry deviceLogin"]
+    Q --> M
+    N -- code 1008 --> R([Session expired<br/>logout])
+    N -- other error --> S([handleErrorCode → close])
+
+    %% ===== Login screen for user selection =====
+    L --> T{User selects}
+    T -- Account / password --> U["doLogin()<br/>grant_type = password"]
+    T -- Play now --> V["btnPlayNowClick()<br/>grant_type = fast_login"]
+    T -- Google --> W["GIDSignIn → doLoginGoogle<br/>grant_type = social, provider = google"]
+    T -- Facebook --> X["FB Login → doLoginFacebook<br/>grant_type = social, provider = facebook"]
+    T -- Apple --> Y["ASAuthorization → doLoginApple<br/>grant_type = social, provider = apple"]
+    T -- Register --> AA([Open registration screen])
+
+    U --> AB[POST PATH_LOGIN_V2]
+    V --> AB
+    W --> AB
+    X --> AB
+    Y --> AB
+
+    AB --> AC{Error code}
+    AC -- code = 0 --> AD["getDataLogin: save token<br/>updatePushId + authenGame<br/>Track login_success<br/>Save account if remember-me is checked"]
+    AD --> AE([Close screen<br/>Login complete])
+    AC -- code != 0 --> AF([handleErrorCode<br/>Show error message])
+
+    %% ===== Refresh token (shared) =====
+    subgraph RT["doRefreshToken (session refresh)"]
+        RA[POST PATH_LOGIN_V2<br/>grant_type = refresh_token] --> RB{Error code}
+        RB -- code = 0 --> RC[Save new token → getUserInfo]
+        RB -- code 1008 --> RD([Session expired → logout])
+        RB -- code 1001/85/98 --> RE([forceLogout])
+    end
+```
+
+## Detailed description
+
+### 1. Entry point – `login()` / `showLogin()`
+
+When the app calls `Sdk.login()`, the SDK checks the `isShowLoginScreen` flag to avoid opening
+a duplicate screen. If not yet shown, `showLogin()` calls the maintenance check API
+`PATH_GAME_CHECK_MAINTAIN` (GET) with `packageId`, `channel`, `version`.
+
+- If the API **errors** or returns `code != 0` → calls `realLogin(nil)` directly.
+- If `code = 0` → subscribes to the returned FCM topics, then checks `isMaintained`:
+  - `isMaintained = true` → shows a maintenance alert and **stops** the flow.
+  - `isMaintained = false` → calls `realLogin(value)`.
+
+### 2. Branching – `realLogin()`
+
+Based on whether the device already has a saved token:
+
+- **`accessToken` and `refreshToken` already available** → `showCheckLoginUI()` (opens `CheckLoginView`),
+  logs back in automatically without any user action.
+- **No token yet** → `showLoginUI()` (opens `LoginViewNew`) so the user can choose a login method.
+
+### 3. Automatic re-login – `CheckLoginView.deviceLogin()`
+
+Calls `PATH_USER_INFO_V2` (GET) with the Bearer accessToken:
+
+- `code = 0`: saves `phone`/`email`, calls the `loginSuccess(userInfo, accessToken, refreshToken)` delegate,
+  runs `registerTimerTask()`, `authenGame()`, `updatePushId()`, and tracks `login_success` (type `Refresh`).
+- `code = 86` or `1001`: calls `doRefreshWithActionV2` to refresh the token then **retries** `deviceLogin()`.
+- `code = 1008`: session expired → `Sdk.logout()`.
+- Other errors: `handleErrorCode` shows a message then closes the screen.
+
+### 4. Login screen – `LoginViewNew`
+
+The user selects one of the methods, all of which call the shared `PATH_LOGIN_V2` (POST) endpoint:
+
+| Method | Handler function | `grant_type` | Notes |
+|---|---|---|---|
+| Account / password | `doLogin()` | `password` | Has a remember-me option (password encrypted with AES-256) |
+| Play now | `btnPlayNowClick()` | `fast_login` | Includes an extra random `nonce` |
+| Google | `doLoginGoogle()` | `social` | `provider = google`, token obtained from `GIDSignIn` |
+| Facebook | `doLoginFacebook()` | `social` | `provider = facebook` / `facebook_limited` |
+| Apple | `doLoginApple()` | `social` | `provider = apple`, via `ASAuthorization` |
+| Register | `btnRegisterClick()` | – | Opens the registration screen |
+
+The Apple / Facebook / Google social buttons only appear when enabled in configuration
+(`enableAppleLogin`, `enableFacebookLogin`, `enableGoogleLogin`), and their order is rearranged
+based on the user's most recent login method.
+
+When `PATH_LOGIN_V2` returns:
+
+- `code = 0`: `getDataLogin()` saves the token, calls `updatePushId()`, `authenGame()`,
+  tracks `login_success`, saves the account if the user checked "remember me", then closes the screen.
+- `code != 0`: `handleErrorCode` shows the corresponding error message.
+
+### 5. Session refresh – `doRefreshToken()`
+
+Shared logic used when the token expires: calls `PATH_LOGIN_V2` with `grant_type = refresh_token`.
+
+- `code = 0`: saves the new token set then calls `getUserInfo()`.
+- `code = 1008`: shows a session-expired message → `logout()`.
+- `code = 1001 / 85 / 98`: `forceLogout()`.
+
+## Endpoints used
+
+- `PATH_GAME_CHECK_MAINTAIN` – checks maintenance status (GET)
+- `PATH_LOGIN_V2` – login / refresh token (POST, distinguished by `grant_type`)
+- `PATH_USER_INFO_V2` – gets user information (GET)
+- `PATH_GAME_AUTH` – authenticates the game after login (`authenGame`)
+- `PATH_LOGOUT` – logout
+
+## Important error codes
+
+- `CODE_0` – success
+- `CODE_86`, `CODE_1001` – token needs refreshing (try refresh then retry)
+- `CODE_1008` – login session expired → logout
+- `CODE_1001 / 85 / 98` – forced logout (`forceLogout`)
