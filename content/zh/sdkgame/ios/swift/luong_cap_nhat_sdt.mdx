@@ -1,0 +1,135 @@
+# 手机号更新流程 – iTapSdk (sdk-game-ios-v3)
+
+本文档描述 SDK 的手机号更新/验证流程，基于实际代码整理而成。
+项目中目前有**两种实现方式**：
+
+- **方式一 – `VerifyPhone`**（一个屏幕合并了手机号输入和 OTP 输入；标题为 *"更新手机号"*）。通过 `Sdk.verifyPhone(...)` 调用。
+- **方式二 – `VerifyPhoneV2` → `VerifyOTP`**（新版本，拆分为两个屏幕；标题为 *"添加手机号"*，与领取礼物流程 `showReceiveGift` 关联）。
+
+两者共用 2 个接口：`PATH_OTP_PHONE_V2`（发送 OTP）和 `PATH_VERIFY_OTP_PHONE_V2`（验证 OTP），参数为 `type = 0`（Verify Phone），并在请求头携带 Bearer accessToken。
+
+## 进入流程的条件 – `Sdk.verifyPhone()`
+
+```mermaid
+flowchart TD
+    A([App 调用 Sdk.verifyPhone]) --> B["POST PATH_USER_INFO_V2<br/>获取账户状态"]
+    B --> C{错误码}
+    C -- code 86 --> C1["doRefreshWithAction<br/>刷新令牌 → 重新调用 verifyPhone"]
+    C1 --> B
+    C -- code != 0 --> C2([callbackVerify false])
+    C -- code = 0 --> D{confirmCode = 2 或 5？}
+    D -- 是 --> E([已验证手机号<br/>callbackVerify true])
+    D -- 否 --> F{账户类型}
+    F -- 游客 / Facebook / Google / Apple --> G([建议转换为 VtvLive ID<br/>打开 ChangeAccountV2View])
+    F -- VtvLive ID 账户 --> H["打开 VerifyPhone<br/>→ 开始更新手机号"]
+```
+
+只有尚未验证手机号（`confirmCode` 不为 2 和 5）的 VtvLive ID 账户才能打开
+手机号更新屏幕；游客/社交账户会先被建议转换账户。
+
+## 方式一 – `VerifyPhone` 屏幕
+
+```mermaid
+flowchart TD
+    A["打开 VerifyPhone<br/>输入手机号"] --> B["btnReceiveOtpClick()"]
+    B --> C{检查手机号}
+    C -- 为空 --> C1([报错：请输入手机号])
+    C -- 不符合 REGEX_PHONE --> C2([报错：手机号无效])
+    C -- 有效 --> D["doSendOTP()<br/>POST PATH_OTP_PHONE_V2, type = 0"]
+
+    D --> E{错误码}
+    E -- code 86 --> E1["doRefreshWithAction → 重新发送 OTP"]
+    E1 --> D
+    E -- code != 0 --> E2([handleErrorCode → 报错])
+    E -- code = 0 --> F["canSendOtpAgain()<br/>开启 OTP 输入框 + 重发倒计时"]
+
+    F --> G[输入 OTP] --> H["btnUpdateClick()"]
+    H --> I{OTP 为空？}
+    I -- 是 --> I1([报错：请输入 OTP])
+    I -- 否 --> J["POST PATH_VERIFY_OTP_PHONE_V2<br/>otp + phone + type 0"]
+
+    J --> K{错误码}
+    K -- code 86 --> K1["doRefreshWithAction → 重新点击更新"]
+    K1 --> J
+    K -- code != 0 --> K2([handleErrorCode → 报错])
+    K -- code = 0 --> L["保存 GlobalManager.phone<br/>Analytics 转化统计"]
+    L --> M([提示：更新成功<br/>callback CallbackSuccess → 关闭屏幕])
+```
+
+### 说明 – 方式一
+
+1. **输入手机号并发送 OTP** – `btnReceiveOtpClick()` 检查手机号不为空且符合
+   `REGEX_PHONE`，然后 `doSendOTP()` 调用 `PATH_OTP_PHONE_V2`（`type = 0`，携带 Bearer 令牌）。
+   - `code = 0`：开启 OTP 输入框并启动重发倒计时（`Constants.timeOutOtpAgain`）。
+   - `code = 86`（令牌过期）：`doRefreshWithAction` 刷新令牌后自动重新点击发送。
+   - 其他错误：`handleErrorCode`。
+2. **输入 OTP 并更新** – `btnUpdateClick()` 检查 OTP 不为空，调用
+   `PATH_VERIFY_OTP_PHONE_V2`（`otp`、`phone`、`type = 0`）。
+   - `code = 0`：保存 `GlobalManager.shared.phone`，记录 Analytics，显示提示
+     "更新成功"，触发 `callback(CallbackSuccess)` 后关闭屏幕。
+   - `code = 86`：刷新令牌后重试。
+   - 其他错误：`handleErrorCode`。
+3. **重新发送 OTP** – 倒计时归零后，"发送验证码"按钮重新启用以再次调用 `PATH_OTP_PHONE_V2`。
+
+## 方式二 – `VerifyPhoneV2` → `VerifyOTP`
+
+```mermaid
+flowchart TD
+    A["打开 VerifyPhoneV2<br/>输入手机号"] --> B{"实时检查<br/>REGEX_PHONE"}
+    B -- 尚未有效 --> B1([继续按钮被锁定])
+    B -- 有效 --> C["pressContinue()<br/>POST PATH_OTP_PHONE_V2, type = 0"]
+
+    C --> D{错误码}
+    D -- code 86 --> D1["doRefreshWithAction → 重新 pressContinue"]
+    D1 --> C
+    D -- code != 0 --> D2([handleErrorCode → 报错])
+    D -- code = 0 --> E["showOTP()<br/>打开 VerifyOTP typeScreen = .phone<br/>关闭 VerifyPhoneV2"]
+
+    E --> F[输入 6 位 OTP<br/>重发倒计时] --> G["pressContinue()"]
+    G --> H["callVerifyPhone()<br/>POST PATH_VERIFY_OTP_PHONE_V2<br/>otp + phone + type 0"]
+    H --> I{错误码}
+    I -- code 86 --> I1["doRefreshWithAction → 重新验证"]
+    I1 --> H
+    I -- code != 0 --> I2([handleErrorCode → 报错])
+    I -- code = 0 --> J["保存 GlobalManager.phone<br/>Analytics 转化统计"]
+    J --> K([关闭屏幕 →<br/>Sdk.showReceiveGift])
+
+    F -. 点击重新发送 .-> L["resendOTPPhone()<br/>POST PATH_OTP_PHONE_V2 → 重置倒计时"]
+    L -.-> F
+    E -. 点击返回 .-> A
+```
+
+### 说明 – 方式二
+
+1. **`VerifyPhoneV2`** – 手机号输入框根据 `REGEX_PHONE` 实时检查；有效
+   则启用"继续"按钮。`pressContinue()` 调用 `PATH_OTP_PHONE_V2`（`type = 0`）。
+   - `code = 0`：`showOTP()` 打开 `VerifyOTP` 屏幕（`typeScreen = .phone`，传入
+     `phone`、`serverId`、`characterId`）并关闭当前屏幕。
+   - `code = 86`：刷新令牌后重新调用。
+   - 其他错误：`handleErrorCode`。
+2. **`VerifyOTP`** – 输入 6 位 OTP，显示遮盖后的手机号（`maskedPhoneFrom`）以及
+   "重新发送"倒计时。`pressContinue()` → `callVerifyPhone()` 调用
+   `PATH_VERIFY_OTP_PHONE_V2`（`otp`、`phone`、`type = 0`）。
+   - `code = 0`：保存 `GlobalManager.shared.phone`，记录 Analytics，关闭屏幕并
+     调用 `Sdk.showReceiveGift()`（继续领取礼物流程）。
+   - `code = 86`：刷新令牌后重试。
+   - 其他错误：`handleErrorCode`。
+   - **重新发送 OTP**：`resendOTPPhone()` 重新调用 `PATH_OTP_PHONE_V2` 并重启倒计时。
+   - **返回**：回到 `VerifyPhoneV2` 屏幕。
+
+## 使用的接口
+
+- `PATH_USER_INFO_V2` – 获取账户验证状态（用于 `verifyPhone` 的条件判断步骤）
+- `PATH_OTP_PHONE_V2` – 发送 OTP 到手机号（POST，`type = 0`）
+- `PATH_VERIFY_OTP_PHONE_V2` – 验证 OTP 并更新手机号（POST，`type = 0`）
+
+## 备注
+
+- 参数 `type = 0` 表示 *Verify Phone*。其他数值用于邮箱及其他
+  验证类型（1 = mail，2/3 = one-time authen，4/5 = one-time transaction）。
+- 所有请求都携带 `accessToken`（Bearer）。遇到 `code = 86`（令牌过期）时，
+  SDK 会自动执行 `doRefreshWithAction` 刷新令牌后重复执行当前未完成的操作。
+- 更新成功都会记录 `GlobalManager.shared.phone` 并调用
+  `Analytics.initiateOnDeviceConversionMeasurement(phoneNumber:)`。
+- 结束方式的差异：方式一向打开该屏幕的一方触发 `callback(CallbackSuccess)`；
+  方式二则转到 `Sdk.showReceiveGift()`。

@@ -1,0 +1,104 @@
+# Luồng đăng ký – iTapSdk (sdk-game-ios-v3)
+
+Tài liệu mô tả luồng đăng ký tài khoản của SDK, dựng từ code thực tế:
+`RegistrationView.swift` (và `LoginViewNew.swift` là nơi mở màn hình đăng ký).
+
+## Sơ đồ tổng quan
+
+```mermaid
+flowchart TD
+    A([Màn hình đăng nhập<br/>Người dùng bấm Đăng ký]) --> B["Mở RegistrationView"]
+    B --> C[Nhập username, mật khẩu,<br/>nhập lại mật khẩu, tick Điều khoản]
+    C --> D["btnRegisteClick()"]
+
+    D --> E{Kiểm tra dữ liệu nhập}
+    E -- Username rỗng --> E1([Báo lỗi: chưa nhập tên])
+    E -- Username < 6 ký tự --> E2([Báo lỗi: tên quá ngắn])
+    E -- Sai REGEX_CHECK_USERNAME --> E3([Báo lỗi: 6-30 ký tự, không ký tự đặc biệt])
+    E -- Mật khẩu rỗng / < 6 --> E4([Báo lỗi mật khẩu])
+    E -- Sai REGEX_CHECK_PASS_WORD --> E5([Báo lỗi: mật khẩu không hợp lệ])
+    E -- Nhập lại không khớp --> E6([Báo lỗi: mật khẩu không khớp])
+    E -- Chưa tick Điều khoản --> E7([Alert: hãy đồng ý Điều khoản và Chính sách])
+    E -- Hợp lệ --> F["runRecaptchaVisual()<br/>Hiển thị reCAPTCHA"]
+
+    F --> G{reCAPTCHA}
+    G -- Có token --> H["recapchaSuccess(token)"]
+    G -- Thất bại / hủy --> G1([recapchaError → gỡ view captcha])
+
+    H --> I["POST PATH_REGISTER_V2<br/>token, username, password, deviceId..."]
+    I --> J{Mã lỗi đăng ký}
+    J -- code != 0 --> J1([handleErrorCode<br/>Hiện thông báo lỗi])
+    J -- code = 0 --> K[Tracking sự kiện registration]
+    K --> L["doLogin() – tự động đăng nhập<br/>POST PATH_LOGIN_V2<br/>grant_type = password"]
+
+    L --> M{Mã lỗi đăng nhập}
+    M -- code = 0 --> N["getDataLogin: lưu token<br/>updatePushId + authenGame<br/>Lưu username/password<br/>Tracking login_success<br/>delegate loginSuccess + registerTimerTask"]
+    N --> O([callback CallbackRegisterSuccess<br/>Đóng màn hình → Vào game])
+    M -- code != 0 --> P([Alert lỗi → đóng màn hình])
+```
+
+## Mô tả chi tiết
+
+### 1. Mở màn hình đăng ký
+
+Từ màn hình đăng nhập (`LoginViewNew`), người dùng bấm **Đăng ký** →
+mở `RegistrationView`. Màn hình gồm ô nhập **tên đăng nhập**, **mật khẩu**,
+**nhập lại mật khẩu** và checkbox đồng ý **Điều khoản & Chính sách**.
+
+### 2. Kiểm tra dữ liệu nhập – `btnRegisteClick()`
+
+Trước khi gọi API, SDK kiểm tra tuần tự (gặp lỗi nào thì báo và dừng ngay):
+
+- Tên đăng nhập không được để trống.
+- Mật khẩu không được để trống.
+- Tên đăng nhập tối thiểu 6 ký tự.
+- Mật khẩu tối thiểu 6 ký tự.
+- Tên đăng nhập khớp `REGEX_CHECK_USERNAME` (6–30 ký tự, không ký tự đặc biệt).
+- Mật khẩu khớp `REGEX_CHECK_PASS_WORD`.
+- Ô nhập lại mật khẩu không được để trống.
+- Mật khẩu và nhập lại mật khẩu phải trùng nhau.
+- Phải tick đồng ý Điều khoản & Chính sách (`isCheck`).
+
+Tất cả hợp lệ → gọi `runRecaptchaVisual()`.
+
+### 3. Xác thực reCAPTCHA – `runRecaptchaVisual()`
+
+Hiển thị `RecaptchaVisual` với `apiKeyRecapcha` và `baseWebId`.
+Nếu lấy được token → gọi `recapchaSuccess(token)`; nếu lỗi/hủy →
+`recapchaError()` gỡ bỏ view captcha.
+
+### 4. Gọi API đăng ký – `recapchaSuccess()`
+
+Gọi `PATH_REGISTER_V2` (POST) với các tham số:
+`reCaptChaVer = ios-v2`, `token`, `username`, `password`, `rePassword`,
+`deviceId`, `os`, `osVersion`, và `ip` (nếu có).
+
+- `code = 0`: tracking sự kiện `registration` (TikTok) → gọi `doLogin()` để **tự động đăng nhập**.
+- `code != 0`: `handleErrorCode` hiển thị thông báo lỗi.
+
+### 5. Tự động đăng nhập sau đăng ký – `doLogin()`
+
+Gọi `PATH_LOGIN_V2` (POST) với `grant_type = password`, dùng chính username/password
+vừa đăng ký.
+
+- `code = 0`:
+  - `getDataLogin()` lưu `accessToken` / `refreshToken`.
+  - `updatePushId()`, `authenGame()`, `Utils.sayHi()`.
+  - Lưu username/password vào bộ nhớ (`KeyUserName`, `KeyPassword`).
+  - Tracking `login_success` (loại `Username`), tracking TikTok `login`.
+  - Gọi delegate `loginSuccess(userInfo, accessToken, refreshToken)` và `registerTimerTask()`.
+  - Gọi `callback(CallbackRegisterSuccess)` rồi đóng màn hình → vào game.
+- `code != 0`: hiện alert lỗi rồi đóng màn hình.
+
+## Các endpoint sử dụng
+
+- `PATH_REGISTER_V2` – đăng ký tài khoản (POST)
+- `PATH_LOGIN_V2` – tự động đăng nhập sau đăng ký (POST, `grant_type = password`)
+- `PATH_GAME_AUTH` – xác thực game sau khi đăng nhập (`authenGame`)
+
+## Ghi chú
+
+- Sau khi đăng ký thành công, SDK **không bắt người dùng đăng nhập lại** mà tự
+  đăng nhập bằng thông tin vừa tạo, sau đó phát callback `CallbackRegisterSuccess`.
+- Toàn bộ điều kiện hợp lệ của tên đăng nhập/mật khẩu được kiểm ở client trước,
+  reCAPTCHA là bước bắt buộc trước khi gọi API đăng ký.
