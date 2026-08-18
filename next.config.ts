@@ -9,11 +9,15 @@ const withNextra = nextra({
   },
 });
 
+const basePath = process.env.BASE_PATH || "";
+
 const nextConfig: NextConfig = {
   i18n: {
     locales: ["vi", "en", "zh"],
     defaultLocale: "vi",
   },
+  basePath,
+  assetPrefix: basePath || undefined,
 };
 
 export default withNextra(nextConfig);
