@@ -4,7 +4,7 @@ import { Menu, MenuButton, MenuItem, MenuItems } from "@headlessui/react";
 
 const VERSIONS = [
   { label: "1.0.1", href: "/sdkgame", current: true },
-  { label: "1.0.0", href: "/sdkgame", current: false },
+  { label: "1.0.0", href: "/v1.0.0/sdkgame", current: false },
 ];
 
 export function VersionSwitch() {
