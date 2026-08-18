@@ -1,7 +1,5 @@
 # 03 — Luồng hoạt động chi tiết
 
-[← Về mục lục](README.md)
-
 Tài liệu này mô tả **từng luồng nghiệp vụ** của SDK, kèm sơ đồ tuần tự và điều kiện rẽ nhánh đúng
 như mã nguồn hiện tại.
 
@@ -22,8 +20,6 @@ như mã nguồn hiện tại.
 13. [Luồng VOD](#13-luồng-vod)
 14. [Mất kết nối và khôi phục](#14-mất-kết-nối-và-khôi-phục)
 15. [Giải phóng tài nguyên](#15-giải-phóng-tài-nguyên)
-
----
 
 ## 1. Khởi tạo SDK
 
@@ -51,8 +47,6 @@ sequenceDiagram
 
 Sau bước này SDK ở trạng thái **Idle**: đã biết môi trường, tenant, có chỗ để render — nhưng chưa
 gắn với nội dung nào.
-
----
 
 ## 2. Đăng nhập / đăng xuất
 
@@ -115,8 +109,6 @@ sequenceDiagram
   **đưa vào cache** thay vì hiển thị.
 - `overlayView` chỉ được `visible()` ở `temporaryUnlock()`.
 
----
-
 ## 4. Nhận và định tuyến overlay (LIVE)
 
 ### 4.1. Tầng socket lọc trước
@@ -172,8 +164,6 @@ flowchart TD
 
 > Khoá `ex_...` dùng `userId` khi đã đăng nhập; nếu chưa đăng nhập nhưng overlay cho phép ẩn danh
 > thì dùng `deviceId`.
-
----
 
 ## 5. Render overlay lên màn hình
 
@@ -241,8 +231,6 @@ sequenceDiagram
 
 Các lỗi tải trang (`onReceivedError`, `onReceivedHttpError`, `onReceivedSslError`) đều:
 `renderTracker.failed(...)` → ẩn WebView → `onFocusOverlay(webViewError = true)`.
-
----
 
 ## 7. Trả lời câu hỏi (mini game)
 
@@ -320,8 +308,6 @@ sequenceDiagram
 | `INTERACTIVE_CLOSE_ANALYTICS` | Ghi nhận (predict/lucky) |
 | `action = CLICK_ADS` + có `url` | Không gọi API, mở trình duyệt ngoài qua `onClickAdsOverlay(url)` |
 
----
-
 ## 8. Dự đoán — Predict (`typeTimeline = 3`)
 
 ```mermaid
@@ -352,7 +338,7 @@ sequenceDiagram
         DLG-->>OM: LOADED_OVERLAY → loadData()
         DLG->>OM: INTERACTIVE_ACTION_REPORT → luồng trả lời (mục 7)
         OM->>API: POST /api/actions
-        API-->>OM: success → updateConfirm(); thất bại → SuggestDialog
+        API-->>OM: success → updateConfirm()<br/>thất bại → SuggestDialog
     end
 
     WS-->>OM: "predict-result" → cập nhật answer1/answer2 → DLG.updateResult()
@@ -367,8 +353,6 @@ Cờ trạng thái điều khiển hiển thị nút:
 | `isPredictDialogOn` | Dialog đang mở | `showPredictDialog()` / `hidePredictDialog()` |
 
 Nút chỉ hiện khi `isPredictOn && isPredictActive`.
-
----
 
 ## 9. Vòng quay may mắn — Lucky (`typeTimeline = 5`)
 
@@ -407,8 +391,6 @@ sequenceDiagram
 - Chỉ nhận hai `type` hành vi: `INTERACTIVE_SHOW_ANALYTICS` và `INTERACTIVE_HIDE_ANALYTICS`
   (không có luồng trả lời).
 
----
-
 ## 11. Thu hồi overlay — overlay-recall
 
 ```mermaid
@@ -427,8 +409,6 @@ sequenceDiagram
 ```
 
 Dùng khi biên tập viên gỡ một overlay đang phát trên toàn hệ thống.
-
----
 
 ## 12. Các sự kiện phụ trợ: liveviews, fan-club, ckst
 
@@ -459,7 +439,7 @@ sequenceDiagram
     participant OV as OverlayView
 
     APP->>OM: joinRoom(mediaId, type = 2)
-    OM->>OM: cleanUp(); isLive = false
+    OM->>OM: cleanUp()<br/>isLive = false
     OM->>WVM: isVisible = true
     OM->>API: GetScenarioRequest(token = USER_COOKIE, mediaId, os)
     API-->>OM: ScenarioDTO {data.timelines[]}
@@ -489,8 +469,6 @@ Khác biệt so với LIVE:
 | `socket_id` trong action | Có | Không |
 | Tracking emit-ack | Có | Không (không có socket để emit) |
 | Predict / Lucky / liveviews | Có | Không |
-
----
 
 ## 14. Mất kết nối và khôi phục
 
@@ -522,8 +500,6 @@ stateDiagram-v2
   trừ đi phần đã trôi qua; nếu hết hạn thì bị bỏ (`expired_duration`).
 - Sự kiện `EVENT_CONNECT_ERROR` → `SocketIOState.Error` → `clearAllStuff()`.
 
----
-
 ## 15. Giải phóng tài nguyên
 
 ```mermaid
@@ -550,7 +526,3 @@ Gọi `releaseAll()` ở:
 - khi người dùng thoát khỏi nội dung (đóng player, quay lại danh sách),
 - trước khi chuyển sang một `mediaId` khác **nếu** không dùng ngay `joinRoom()` (vì `joinRoom` đã tự
   dọn).
-
----
-
-[← Cài đặt & Tích hợp](02-cai-dat-va-tich-hop.md) · [Về mục lục](README.md) · [Tiếp: API Reference →](04-api-reference.md)
