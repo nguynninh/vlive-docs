@@ -234,6 +234,16 @@ jobs:
 - `/latest/` không phải version cố định — nó luôn trỏ theo bản cao nhất theo semver, tự động cập nhật mỗi lần `main` có version mới cao hơn.
 - Không tự chuyển `latest` khi phát hành bản vá cho version cũ hơn bản đang là latest (ví dụ ra `v1.0.2` trong khi `v2.0.0` đã tồn tại) — chỉ thêm vào `/versions/` và `versions.json`, không đụng `/latest/`.
 
+## Version switcher (dropdown chọn phiên bản trên header)
+
+Dropdown chọn version trên site (`app/[lang]/version-switch.tsx`) là UI thuần — nó **không tự biết** bản nào đang thật sự được giữ song song trên VPS. Mỗi khi quyết định giữ một bản release cũ chạy song song theo path (mục "Build static snapshot theo version" ở trên), phải đồng bộ đúng **cả 3 chỗ** sau, thiếu 1 trong 3 là dropdown sẽ trỏ tới link chết (đã từng xảy ra với `v1.0.3` — path không được build/deploy nhưng vẫn nằm trong dropdown):
+
+1. `nginx/nginx.vdocs.conf` — thêm `location /vX.Y.Z/ { proxy_pass ...; }` trỏ tới PM2 process build với `BASE_PATH=/vX.Y.Z` tương ứng.
+2. Deploy thật: build + chạy PM2 ở port riêng cho bản đó (xem `deploy.sh`).
+3. `app/[lang]/version-switch.tsx` — thêm entry `{ label: "X.Y.Z", basePath: "/vX.Y.Z" }` vào mảng `VERSIONS`.
+
+**Nguyên tắc:** chỉ thêm version vào `VERSIONS` sau khi bước 1 và 2 đã chạy thật trên VPS — không thêm "trước" cho có, vì lúc đó path chưa tồn tại. Khi ngừng giữ song song một bản cũ (gỡ location block + dừng PM2), phải xóa luôn entry tương ứng khỏi `VERSIONS`. Nếu chỉ còn 1 bản đang chạy, `VersionSwitch` tự ẩn dropdown (không hiển thị menu chỉ có 1 lựa chọn vô nghĩa).
+
 ## Nơi thử trước khi merge lên `main`
 
 Vì merge `development → main` là release ngay lập tức, **không còn bước đệm nào sau đó nữa** — nên phải chặn lỗi *trước khi* admin merge, chứ không phải sau.
