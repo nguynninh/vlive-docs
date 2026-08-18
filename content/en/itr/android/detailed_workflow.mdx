@@ -355,7 +355,7 @@ sequenceDiagram
         DLG-->>OM: LOADED_OVERLAY → loadData()
         DLG->>OM: INTERACTIVE_ACTION_REPORT → answer flow (section 7)
         OM->>API: POST /api/actions
-        API-->>OM: success → updateConfirm(); failure → SuggestDialog
+        API-->>OM: success → updateConfirm()<br/>failure → SuggestDialog
     end
 
     WS-->>OM: "predict-result" → update answer1/answer2 → DLG.updateResult()
@@ -463,7 +463,7 @@ sequenceDiagram
     participant OV as OverlayView
 
     APP->>OM: joinRoom(mediaId, type = 2)
-    OM->>OM: cleanUp(); isLive = false
+    OM->>OM: cleanUp()<br/>isLive = false
     OM->>WVM: isVisible = true
     OM->>API: GetScenarioRequest(token = USER_COOKIE, mediaId, os)
     API-->>OM: ScenarioDTO {data.timelines[]}
