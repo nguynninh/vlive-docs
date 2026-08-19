@@ -2,19 +2,55 @@
 
 import { Menu, MenuButton, MenuItem, MenuItems } from "@headlessui/react";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 
-const VERSIONS = [
-  { label: "1.1.3", href: "/", basePath: "/", current: true },
-  { label: "1.1.1", href: "/v1.1.1/", basePath: "/v1.1.2/", current: false },
-];
+const VERSIONS_API_URL = "https://api-docs-mobile.vtvlive.vn/api/paths";
+
+type VersionApiItem = {
+  tag: string;
+  path: string;
+  url: string;
+  port: string;
+  running: boolean;
+};
+
+type Version = { label: string; basePath: string };
+
+const FALLBACK_VERSIONS: Version[] = [{ label: "latest", basePath: "/" }];
 
 export function VersionSwitch() {
   const pathname = usePathname();
+  const [versions, setVersions] = useState<Version[]>(FALLBACK_VERSIONS);
 
-  const active = VERSIONS[0];
+  useEffect(() => {
+    let cancelled = false;
+
+    fetch(VERSIONS_API_URL)
+      .then((res) => res.json())
+      .then((data: { items: VersionApiItem[] }) => {
+        if (cancelled) return;
+        const running = data.items
+          .filter((item) => item.running)
+          .map((item) => ({
+            label: item.tag.replace(/^v/, ""),
+            basePath: item.path,
+          }));
+        if (running.length > 0) setVersions(running);
+      })
+      .catch(() => {
+        // giữ nguyên FALLBACK_VERSIONS nếu API lỗi
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const active =
+    versions.find((v) => v.basePath !== "/" && pathname.startsWith(v.basePath)) ?? versions[0];
 
   // Chỉ 1 bản đang chạy thì hiện nhãn tĩnh, không cần dropdown để bấm.
-  if (VERSIONS.length < 2) {
+  if (versions.length < 2) {
     return (
       <span className="nextra-lang-switch-button" aria-disabled>
         {active.label}
@@ -23,7 +59,7 @@ export function VersionSwitch() {
   }
 
   const stripBasePath = (path: string) => {
-    const current = VERSIONS.find((v) => v.basePath && path.startsWith(v.basePath));
+    const current = versions.find((v) => v.basePath && path.startsWith(v.basePath));
     return current ? path.slice(current.basePath.length) || "/" : path;
   };
 
@@ -46,7 +82,7 @@ export function VersionSwitch() {
         </svg>
       </MenuButton>
       <MenuItems anchor={{ to: "bottom end", gap: 10, padding: 16 }} className="nextra-lang-switch-items">
-        {VERSIONS.map((version) => {
+        {versions.map((version) => {
           const isActive = version.label === active.label;
           const href = `${version.basePath}${restOfPath}`;
           return (
