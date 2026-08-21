@@ -1,6 +1,6 @@
-# 03 — Detailed Workflow
+import { Tabs } from 'nextra/components'
 
-[← Back to table of contents](README.md)
+# 03 — Detailed Workflow
 
 This document describes **each business flow** of the SDK, along with sequence diagrams and branch
 conditions exactly as they exist in the current source code.
@@ -378,10 +378,20 @@ The button is only shown when `isPredictOn && isPredictActive`.
 Structurally similar to Predict (`LuckyBtnView` + `LuckyDialog`, socket event `lucky-event` with
 `ACTIVE/INACTIVE/POWER/END`), with **one important difference**:
 
+<Tabs items={['Kotlin', 'Java']}>
+  <Tabs.Tab>
 ```kotlin
 // OverlayManager.genLuckyStuff() — last line
 showLuckyDialog()
 ```
+  </Tabs.Tab>
+  <Tabs.Tab>
+```java
+// OverlayManager.genLuckyStuff() — last line
+showLuckyDialog();
+```
+  </Tabs.Tab>
+</Tabs>
 
 → The lucky overlay **opens its dialog automatically as soon as it is received**, without waiting
 for the user to tap a button.

@@ -23,7 +23,7 @@ khóa / phiên bị thu hồi ở nơi khác).
 ## Sơ đồ tổng quan
 
 ```mermaid
-flowchart TD
+flowchart LR
     A([Yêu cầu đăng xuất]) --> B{Loại đăng xuất}
 
     B -- "Chủ động: logout()" --> C["POST PATH_LOGOUT<br/>token = refreshToken<br/>token_type_hint = refresh_token<br/>client_id + client_secret"]

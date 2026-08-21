@@ -1,0 +1,30 @@
+# 概览
+
+**Interactive SDK** 可让你在应用的视频播放器上叠加交互层(悬浮层、小游戏、问卷、投票等),
+通过 Socket.IO 与 Interactive 服务器实时连接,并在客户端与后端之间同步交互状态。
+
+<Callout type="info">
+  这里是 **Getting Started(入门)** 部分——在深入了解 Android/iOS 各平台的集成文档之前的起点。
+</Callout>
+
+## 本文档适合谁
+
+- 需要将 Interactive SDK 集成到已有播放器的 Android/iOS 工程师。
+- 在集成前需要了解整体架构(客户端 ⇄ Socket.IO ⇄ REST ⇄ CDN)的人员。
+- 需要排查悬浮层、emit-ack 埋点或登录/登出流程问题的人员。
+
+## 文档结构
+
+| 章节 | 内容 |
+|---|---|
+| **入门** | 概览与快速开始指南(本页)。 |
+| **Android** | SDK 架构、安装与集成、详细流程、API 参考、常见错误、埋点。 |
+| **iOS** | 与 Android 相同,针对 iOS(Swift)平台。 |
+
+## 前置条件
+
+- 应用已具备视频播放器(ExoPlayer、AVPlayer 或其他播放器 SDK)。
+- 拥有用于承载悬浮层的 `FragmentActivity`/`AppCompatActivity`(Android)或对应的 `UIViewController`(iOS)。
+- 已获取 Interactive 服务器的连接信息(Socket.IO 地址、REST API、`X-TENANT-ID`)。
+
+接下来,请查看[快速开始](/itr/getting-started/quick_start)快速将 SDK 集成到你的应用中。

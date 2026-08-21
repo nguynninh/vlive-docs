@@ -1,0 +1,334 @@
+# Tracking SDK iOS 5.3.1
+
+## 1. Cập nhật sự kiện 147
+
+Dùng để kiểm tra và hiển thị màn hình "Event Profile" (thông tin sự kiện) ngay sau khi đăng nhập thành công.
+
+Nên gọi ngay trong callback `loginSuccess` của `SdkDelegate`, trước khi cho vào màn hình game.
+
+```objectivec
+[[Sdk sharedInstance] showOrHide147];
+```
+
+Tất cả các hàm tracking được gọi qua singleton:
+
+```objectivec
+[[SdkTracking sharedInstance] ...];
+```
+
+Framework cần thiết: `ISdkTrackier.xcframework` (đã có trong danh sách tài liệu cần cho tích hợp SDK).
+
+## 2. Mapping User
+
+Dùng để gắn thông tin nhân vật/server hiện tại vào hệ thống tracking. Nên gọi ngay sau khi người chơi chọn server hoặc chọn nhân vật, và trước khi gọi các hàm log khác liên quan đến nhân vật đó.
+
+```objectivec
+-(void) mappingUser:(NSString*)characterName
+characterId:(NSString*)characterId
+characterLevel:(NSString*)characterLevel
+serverName:(NSString*)serverName
+serverId:(NSString*)serverId;
+```
+
+Tham số:
+
+| Tham số | Ý nghĩa |
+|---|---|
+| characterName | Tên nhân vật |
+| characterId | Id nhân vật |
+| characterLevel | Level nhân vật |
+| serverName | Tên server |
+| serverId | Id server |
+
+Ví dụ:
+
+```objectivec
+[[SdkTracking sharedInstance] mappingUser:@"name"
+characterId:@1
+characterLevel:@1
+serverName:@"test"
+serverId:@"1"];
+```
+
+## 3. Log Function
+
+Các hàm log dùng để theo dõi hành trình người dùng: mở game → tải/giải nén tài nguyên → đăng nhập/chọn server → tạo hoặc chọn nhân vật → vào game → tutorial.
+
+Ghi chú theo flowchart gốc:
+
+- **Màu xám**: các bước xảy ra trong Game.
+- **Màu vàng**: các bước Game gọi vào SDK (chính là các hàm log bên dưới).
+
+Khai báo tổng quan (không tham số):
+
+```objectivec
+-(void) logStartGameScreen;
+-(void) logEnterGamePlay;
+-(void) logStartTutorial;
+-(void) logCompleteTutorial;
+```
+
+### 3.1. logStartGameScreen
+
+Gọi khi màn hình "Open Start Game" (màn hình bắt đầu, trước khi vào game) được mở.
+
+```objectivec
+[[SdkTracking sharedInstance] logStartGameScreen];
+```
+
+### 3.2. logEnterGamePlay
+
+Tracking việc người dùng vào màn hình chơi game (Game Play Screen) sau khi bấm nút "Vào Game"/"Enter Game".
+
+```objectivec
+[[SdkTracking sharedInstance] logEnterGamePlay];
+```
+
+Gọi ngay tại nơi xử lý sự kiện bấm nút "Vào Game", trước khi chuyển sang màn hình gameplay.
+
+### 3.3. Tải tài nguyên (Resource download)
+
+#### Bắt đầu tải tài nguyên
+
+```objectivec
+// Bắt đầu tải tài nguyên
+-(void) logPatchStart:(NSNumber *_Nullable)sizeMB
+withVerrsion:(NSString *_Nullable)version
+withNetworkType:(NSString *_Nullable)networkType;
+```
+
+| Tham số | Ý nghĩa |
+|---|---|
+| sizeMB | Dung lượng file patch cần update (hiển thị theo Mb) |
+| version | Version gói cài |
+| networkType | Loại mạng (vd: `"wifi"`) |
+
+```objectivec
+[[SdkTracking sharedInstance] logPatchStart:@"500"
+withVerrsion:@"1.0.1"
+withNetworkType:@"wifi"];
+```
+
+#### Tải tài nguyên thành công
+
+```objectivec
+-(void) logPatchSuccess:(NSNumber *_Nullable)durationSec
+withAvgSpeedKbps:(NSNumber *_Nullable)avgSpeedKbps
+withCdnNode:(NSString *_Nullable)cdnNode;
+```
+
+| Tham số | Ý nghĩa |
+|---|---|
+| durationSec | Thời gian từ khi bắt đầu download đến khi download hoàn tất |
+| avgSpeedKbps | Tốc độ tải trung bình (kiểm tra thêm với trường hợp `update_type` là Store xem có lấy được không) |
+| cdnNode | Node CDN đã dùng để tải |
+
+```objectivec
+[[SdkTracking sharedInstance] logPatchSuccess:@"500"
+withAvgSpeedKbps:@"450"
+withCdnNode:@"192.168.0.2"];
+```
+
+> **Lưu ý:** ví dụ gốc trong tài liệu có bị lặp tham số `avgSpeedKbps` (một lỗi đánh máy của tài liệu gốc); bản trên đã lược bỏ phần lặp cho đúng với signature hàm.
+
+#### Tải tài nguyên thất bại
+
+```objectivec
+// Khi việc tải tài nguyên bị gián đoạn hoặc thất bại
+-(void) logPatchError:(NSString *_Nullable)errorCode
+withRetryCount:(NSNumber *_Nullable)retryCount
+withFailedUrl:(NSString *_Nullable)failedUrl
+withCdnNode:(NSString *_Nullable)cdnNode;
+```
+
+| Tham số | Ý nghĩa |
+|---|---|
+| errorCode | Mã lỗi |
+| retryCount | Số lần cần retry do lỗi |
+| failedUrl | URL bị lỗi |
+| cdnNode | Node CDN gặp lỗi |
+
+```objectivec
+[[SdkTracking sharedInstance] logPatchError:@"500"
+withRetryCount:@1
+withFailedUrl:@"https://cdn.game.com/patch/v120.zip"
+withCdnNode:@"192.168.0.2"];
+```
+
+### 3.4. Giải nén tài nguyên (Resource extraction)
+
+#### Bắt đầu giải nén
+
+Ngay sau khi tải xong, bắt đầu giải nén/cài đặt:
+
+```objectivec
+-(void) logExtractStarted:(NSString *_Nullable)totalSizeMb
+withTotalSize:(NSString *_Nullable)totalSize;
+```
+
+| Tham số | Ý nghĩa |
+|---|---|
+| totalSizeMb | Dung lượng sau khi giải nén, tính theo Mb |
+| totalSize | Số lượng file trong patch cần giải nén (nếu không lấy được thì bỏ qua) |
+
+```objectivec
+[[SdkTracking sharedInstance] logExtractStarted:@"500"
+withTotalSize:@"400"];
+```
+
+#### Giải nén hoàn tất
+
+Khi giải nén xong, sẵn sàng vào màn hình Login:
+
+```objectivec
+-(void) logExtractFinished:(NSNumber *_Nullable)durationSec
+withResultCode:(NSString *_Nullable)resultCode;
+```
+
+| Tham số | Ý nghĩa |
+|---|---|
+| durationSec | Thời gian tính từ lúc bắt đầu giải nén đến khi thành công |
+| resultCode | Mã kết quả (`0`/`"ok"`: OK, `1`: Disk Full) |
+
+```objectivec
+[[SdkTracking sharedInstance] logExtractFinished:@100
+withResultCode:@"ok"];
+```
+
+### 3.5. Tạo nhân vật (Character creation)
+
+#### Bắt đầu tạo nhân vật
+
+```objectivec
+-(void) logCharCreateStart:(NSString *_Nullable)serverId;
+```
+
+| Tham số | Ý nghĩa |
+|---|---|
+| serverId | Id server |
+
+```objectivec
+[[SdkTracking sharedInstance] logCharCreateStart:@"100"];
+```
+
+> **Lưu ý:** cần dùng một timer để tính khoảng thời gian từ lúc bắt đầu đến lúc tạo nhân vật xong (`durationSec` dùng cho `logCharCreateSuccess`).
+
+#### Tạo nhân vật thành công
+
+```objectivec
+-(void) logCharCreateSuccess:(NSString *_Nullable)serverId
+withCharId:(NSString *_Nullable)charId
+withCharName:(NSString *_Nullable)charName
+withCharClass:(NSString *_Nullable)charClass
+withDurationSec:(NSNumber *_Nullable)durationSec;
+```
+
+| Tham số | Ý nghĩa |
+|---|---|
+| serverId | Id server |
+| charId | Id nhân vật |
+| charName | Tên nhân vật |
+| charClass | Id class/lớp nhân vật |
+| durationSec | Thời gian tính từ lúc bắt đầu tạo nhân vật đến khi tạo thành công |
+
+```objectivec
+[[SdkTracking sharedInstance] logCharCreateSuccess:@"100"
+withCharId:@"1001"
+withCharName:@"test"
+withCharClass:@"1"
+withDurationSec:@5];
+```
+
+> **Lưu ý:** ví dụ trong tài liệu gốc bị copy nhầm tham số từ hàm `logPatchStart` (`withVerrsion`, `withNetworkType`) — không khớp với signature của `logCharCreateSuccess`. Ví dụ ở trên đã được viết lại đúng theo các tham số thực của hàm; bạn nên xác nhận lại với đội SDK (VTVLive) nếu cần đối chiếu chính xác 100%.
+
+#### Tạo nhân vật thất bại
+
+```objectivec
+-(void) logCharCreateError:(NSString *_Nullable)errorCode
+withCharName:(NSString *_Nullable)charName
+withServerId:(NSString *_Nullable)serverId;
+```
+
+| Tham số | Ý nghĩa |
+|---|---|
+| errorCode | Mã lỗi (vd: `"NAME_DUPLICATED"`) |
+| charName | Tên nhân vật |
+| serverId | Id server |
+
+```objectivec
+[[SdkTracking sharedInstance] logCharCreateError:@"NAME_DUPLICATED"
+withCharName:@"test"
+withServerId:@"1"];
+```
+
+### 3.6. Chọn nhân vật (Character select)
+
+Sau khi chọn server/chọn nhân vật xong, gọi hàm này:
+
+```objectivec
+-(void) logCharSelect:(NSString *_Nullable)charId
+withCharacterName:(NSString *_Nonnull)characterName
+withCharLevel:(NSString *_Nullable)charLevel;
+```
+
+| Tham số | Ý nghĩa |
+|---|---|
+| charId | Id nhân vật |
+| characterName | Tên nhân vật |
+| charLevel | Level nhân vật |
+
+```objectivec
+[[SdkTracking sharedInstance] logCharSelect:@"1"
+withCharacterName:@"name"
+withCharLevel:@"1"];
+```
+
+### 3.7. Tutorial
+
+Hai hàm khai báo không tham số (dùng để tracking bắt đầu/hoàn thành tutorial trong game):
+
+```objectivec
+[[SdkTracking sharedInstance] logStartTutorial];
+[[SdkTracking sharedInstance] logCompleteTutorial];
+```
+
+## 4. Sơ đồ tracking (Flowchart)
+
+Sơ đồ vẽ lại toàn bộ luồng gọi các hàm `SdkTracking`, bám theo flowchart gốc trong tài liệu, được chia thành 3 phần theo trình tự game.
+
+Chú thích màu:
+
+- **Ô xám**: các bước xảy ra trong Game.
+- **Ô xanh (hình thoi)**: điểm rẽ nhánh/quyết định.
+- **Ô vàng**: điểm Game gọi vào SDK (các hàm `SdkTracking`).
+
+### 4.1. Tải & giải nén tài nguyên
+
+![Luồng tải và giải nén tài nguyên](/images/sdkgame/ios/objective_c/tracking_guide/resource-download-extraction-flow-vi.png)
+
+*Hình 1 — Luồng tải và giải nén tài nguyên*
+
+### 4.2. Đăng nhập, tạo/chọn nhân vật
+
+![Luồng đăng nhập, tạo hoặc chọn nhân vật](/images/sdkgame/ios/objective_c/tracking_guide/login-character-flow-vi.png)
+
+*Hình 2 — Luồng đăng nhập, tạo hoặc chọn nhân vật*
+
+### 4.3. Vào game & Tutorial
+
+![Luồng vào game và tutorial](/images/sdkgame/ios/objective_c/tracking_guide/enter-game-tutorial-flow-vi.png)
+
+*Hình 3 — Luồng vào game và tutorial*
+
+> **Lưu ý:** sơ đồ được vẽ lại cho rõ ràng, dựa trên đúng tên hàm/thứ tự bước theo flowchart gốc trong tài liệu — không copy nguyên các giá trị ví dụ nhỏ trong hình gốc (vốn có vài chỗ ghi tham số chưa khớp signature, như đã nêu ở mục 3.3 và 3.5 ở trên).
+
+## 5. Tóm tắt thứ tự gọi theo luồng game
+
+1. Mở game → cần tải bản cập nhật? → `logPatchStart` → tải xong: `logPatchSuccess`, hoặc lỗi: `logPatchError`
+2. Bắt đầu giải nén: `logExtractStarted` → giải nén xong: `logExtractFinished`
+3. Mở màn hình bắt đầu: `logStartGameScreen`
+4. Đăng nhập/chọn server thành công
+5. Tạo nhân vật mới: `logCharCreateStart` → thành công: `logCharCreateSuccess`/lỗi: `logCharCreateError` (hoặc) chọn nhân vật có sẵn: `logCharSelect`
+6. Gắn thông tin nhân vật vào tracking: `mappingUser`
+7. Bấm "Vào Game": `logEnterGamePlay`
+8. Trong luồng hướng dẫn chơi: `logStartTutorial`/`logCompleteTutorial`

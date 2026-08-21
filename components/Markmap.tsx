@@ -17,6 +17,7 @@ export function Markmap({ content }: { content: string }) {
       svgRef.current,
       {
         duration: 0,
+        autoFit: true,
         maxInitialScale: 3,
         fitRatio: 0.9,
         zoom: false,

@@ -1,4 +1,10 @@
 const meta = {
+  integration_guide: {
+    title: "iOS SDK Swift 集成指南",
+    theme: {
+      pagination: false,
+    },
+  },
   luong_dang_ky: {
     title: "注册流程",
     theme: {

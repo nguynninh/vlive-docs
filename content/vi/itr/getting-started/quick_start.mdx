@@ -1,0 +1,30 @@
+# Bắt đầu nhanh
+
+Hướng dẫn nhanh để đưa **Interactive SDK** vào ứng dụng và hiển thị overlay đầu tiên.
+
+<Callout type="warning">
+  Nếu chưa đọc [Tổng quan](/itr/getting-started/overview), bạn nên xem qua trước để hiểu kiến trúc tổng thể của SDK.
+</Callout>
+
+## 1. Chọn nền tảng
+
+Chọn tài liệu tích hợp chi tiết theo nền tảng của bạn:
+
+- **Android** → xem [Cài đặt & Tích hợp](/itr/android/installation_integration)
+- **iOS** → xem [Cài đặt & Tích hợp](/itr/ios/installation_integration)
+
+## 2. Các bước chung
+
+1. **Thêm SDK** vào project (module nguồn hoặc file `.aar`/framework).
+2. **Khởi tạo** thành phần quản lý overlay (ví dụ `OverlayManager` trên Android) trong màn hình phát video.
+3. **Kết nối realtime**: gọi hàm khởi tạo token (`initToken`) và tham gia phòng (`joinRoom`) để nhận sự kiện từ server Interactive.
+4. **Gắn overlay** lên trên player: khai báo view overlay đè lên vùng hiển thị video.
+5. **Lắng nghe callback**: xử lý các trạng thái như `NEED_LOGIN`, thay đổi socket state, hoặc sự kiện tương tác từ người dùng.
+6. **Kiểm thử**: chạy thử với môi trường staging/server Interactive để xác nhận overlay hiển thị đúng và tracking emit-ack hoạt động.
+
+## 3. Bước tiếp theo
+
+- Xem [Kiến trúc SDK Interactive](/itr/android/sdk_interactive_architecture) để hiểu cách các thành phần phối hợp.
+- Xem [Luồng hoạt động chi tiết](/itr/android/detailed_workflow) để nắm rõ vòng đời của một phiên tương tác.
+- Tham khảo [API Reference](/itr/android/api_reference) khi cần chi tiết từng hàm/callback.
+- Xem [Lỗi thường gặp](/itr/android/error) nếu gặp sự cố trong quá trình tích hợp.

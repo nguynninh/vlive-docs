@@ -1,10 +1,9 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import Image from "next/image";
-import Link from "next/link";
 
 import { Layout, Navbar } from "nextra-theme-docs";
-import { Banner, Head, Search } from "nextra/components";
+import { Head, Search } from "nextra/components";
 import { getPageMap } from "nextra/page-map";
 
 import { LanguageSwitch } from "./language-switch";
@@ -20,8 +19,6 @@ const i18n = {
   vi: {
     title: "Giới thiệu - VDocs",
     description: "Tài liệu VDocs",
-    bannerText: "VDocs 4.0 đã được phát hành.",
-    bannerLink: "Đọc tài liệu.",
     editLink: "Chỉnh sửa trang này trên GitHub",
     feedback: "Bạn có câu hỏi? Hãy gửi phản hồi cho chúng tôi.",
     searchPlaceholder: "Tìm kiếm tài liệu...",
@@ -31,8 +28,6 @@ const i18n = {
   en: {
     title: "Introduction - VDocs",
     description: "VDocs documentation",
-    bannerText: "VDocs 4.0 has been released.",
-    bannerLink: "Read the docs.",
     editLink: "Edit this page on GitHub",
     feedback: "Have a question? Send us feedback.",
     searchPlaceholder: "Search documentation...",
@@ -42,8 +37,6 @@ const i18n = {
   zh: {
     title: "简介 - VDocs",
     description: "VDocs 文档",
-    bannerText: "VDocs 4.0 已经发布。",
-    bannerLink: "阅读文档。",
     editLink: "在 GitHub 上编辑此页面",
     feedback: "有问题吗？请给我们反馈。",
     searchPlaceholder: "搜索文档...",
@@ -80,12 +73,6 @@ export default async function RootLayout({
   const t = i18n[lang as Lang] ?? i18n.vi;
   const pageMap = await getPageMap(`/${lang}`);
 
-  const banner = (
-    <Banner storageKey="vdocs-4-release">
-      {t.bannerText} <Link href={`/${lang}/sdkgame`}>{t.bannerLink}</Link>
-    </Banner>
-  );
-
   const navbar = (
     <Navbar
       logoLink="https://vtvlive.vn/"
@@ -112,7 +99,6 @@ export default async function RootLayout({
 
       <body>
         <Layout
-          banner={banner}
           navbar={navbar}
           pageMap={pageMap}
           darkMode={false}

@@ -1,3 +1,5 @@
+import { Tabs } from 'nextra/components'
+
 # 02 — Installation & Integration
 
 ## 1. Environment requirements
@@ -182,6 +184,8 @@ picture.
 The sample repo recalculates the size at a 16:9 ratio in `onResume` / `onConfigurationChanged`
 (see [MainActivity.kt:151](../app/src/main/java/com/vtvlive/example/MainActivity.kt:151)):
 
+<Tabs items={['Kotlin', 'Java']}>
+  <Tabs.Tab>
 ```kotlin
 private fun resizeContentView() {
     contentView.viewTreeObserver.addOnPreDrawListener(object : ViewTreeObserver.OnPreDrawListener {
@@ -195,11 +199,31 @@ private fun resizeContentView() {
     })
 }
 ```
+  </Tabs.Tab>
+  <Tabs.Tab>
+```java
+private void resizeContentView() {
+    contentView.getViewTreeObserver().addOnPreDrawListener(new ViewTreeObserver.OnPreDrawListener() {
+        @Override
+        public boolean onPreDraw() {
+            contentView.getViewTreeObserver().removeOnPreDrawListener(this);
+            int screenWidth = contentView.getWidth();
+            int calculatedHeight = (screenWidth * 9) / 16;
+            updateOverlayViewLayoutParams(screenWidth, contentView.getHeight(), calculatedHeight);
+            return true;
+        }
+    });
+}
+```
+  </Tabs.Tab>
+</Tabs>
 
 ---
 
 ## 6. Initializing the SDK
 
+<Tabs items={['Kotlin', 'Java']}>
+  <Tabs.Tab>
 ```kotlin
 class MainActivity : AppCompatActivity(), DefaultOverlayEventListener {
 
@@ -227,6 +251,38 @@ class MainActivity : AppCompatActivity(), DefaultOverlayEventListener {
     }
 }
 ```
+  </Tabs.Tab>
+  <Tabs.Tab>
+```java
+public class MainActivity extends AppCompatActivity implements DefaultOverlayEventListener {
+
+    private OverlayManager overlayManager;
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main);
+        initInteractive();
+    }
+
+    private void initInteractive() {
+        OverlayData overlayData = new OverlayData.Builder()
+            .setEnvironment(EnvInteractive.PROD)   // DEV | STG | PROD, defaults to PROD
+            .setTenantId("vtvlive")                // required, issued by the Interactive team
+            .setDebug(false)                       // optional
+            .build();
+
+        overlayManager = new OverlayManager(
+            /* activity  */ this,
+            /* overlayView */ findViewById(R.id.overlay_view),
+            /* overlayData */ overlayData,
+            /* listener */ this
+        );
+    }
+}
+```
+  </Tabs.Tab>
+</Tabs>
 
 The constructor **does not open a network connection** — it only loads the configuration.
 The connection starts at `joinRoom()`.
@@ -235,6 +291,8 @@ The connection starts at `joinRoom()`.
 
 ## 7. Declaring the login session
 
+<Tabs items={['Kotlin', 'Java']}>
+  <Tabs.Tab>
 ```kotlin
 // On successful login
 overlayManager.initToken(
@@ -246,6 +304,21 @@ overlayManager.initToken(
 // On logout
 overlayManager.initToken("", "")
 ```
+  </Tabs.Tab>
+  <Tabs.Tab>
+```java
+// On successful login
+overlayManager.initToken(
+    accessToken,   // JWT (starting with "ey") or a cookie string
+    userId,        // user identifier
+    ""             // optional: BJ/channel name, shown in the fanclub dialog
+);
+
+// On logout
+overlayManager.initToken("", "");
+```
+  </Tabs.Tab>
+</Tabs>
 
 Mechanism:
 
@@ -260,6 +333,8 @@ Mechanism:
 
 ## 8. Entering / leaving content
 
+<Tabs items={['Kotlin', 'Java']}>
+  <Tabs.Tab>
 ```kotlin
 // LIVE
 overlayManager.joinRoom(mediaId = "003c04ba-8f7d-4663-bef0-c7a971c059b6", type = 1)
@@ -270,6 +345,20 @@ overlayManager.joinRoom(mediaId = "4357747e-004c-4190-a3f3-4a33840a3c09", type =
 // Leaving content / destroying the screen
 overlayManager.releaseAll()
 ```
+  </Tabs.Tab>
+  <Tabs.Tab>
+```java
+// LIVE
+overlayManager.joinRoom("003c04ba-8f7d-4663-bef0-c7a971c059b6", 1);
+
+// VOD
+overlayManager.joinRoom("4357747e-004c-4190-a3f3-4a33840a3c09", 2);
+
+// Leaving content / destroying the screen
+overlayManager.releaseAll();
+```
+  </Tabs.Tab>
+</Tabs>
 
 - `type = 1` → LIVE (`Const.VIDEO_LIVE`), `type = 2` → VOD (`Const.VIDEO_VOD`).
 - `joinRoom` automatically cleans up the previous session, so switching channels only requires
@@ -279,11 +368,22 @@ overlayManager.releaseAll()
 
 **Checking whether content has interactivity before joining the room** (optional):
 
+<Tabs items={['Kotlin', 'Java']}>
+  <Tabs.Tab>
 ```kotlin
 overlayManager.fetchInteractiveStatus(mediaId) { isInteractive ->
     if (isInteractive) overlayManager.joinRoom(mediaId, type = 1)
 }
 ```
+  </Tabs.Tab>
+  <Tabs.Tab>
+```java
+overlayManager.fetchInteractiveStatus(mediaId, isInteractive -> {
+    if (isInteractive) overlayManager.joinRoom(mediaId, 1);
+});
+```
+  </Tabs.Tab>
+</Tabs>
 
 ---
 
@@ -292,6 +392,8 @@ overlayManager.fetchInteractiveStatus(mediaId) { isInteractive ->
 For VOD, the SDK **does not automatically know** which second the player is at. The app must
 feed it in every second:
 
+<Tabs items={['Kotlin', 'Java']}>
+  <Tabs.Tab>
 ```kotlin
 private val handler = Handler(Looper.getMainLooper())
 private var seconds = 0
@@ -310,6 +412,29 @@ handler.post(tick)
 // stop when leaving the content
 handler.removeCallbacks(tick)
 ```
+  </Tabs.Tab>
+  <Tabs.Tab>
+```java
+private Handler handler = new Handler(Looper.getMainLooper());
+private int seconds = 0;
+
+private Runnable tick = new Runnable() {
+    @Override
+    public void run() {
+        seconds = (int) (player.getCurrentPosition() / 1000);   // player's current second
+        overlayManager.receiveTrackingTime(seconds);            // feed into the SDK
+        handler.postDelayed(this, 1000L);
+    }
+};
+
+// start after joinRoom(type = 2)
+handler.post(tick);
+
+// stop when leaving the content
+handler.removeCallbacks(tick);
+```
+  </Tabs.Tab>
+</Tabs>
 
 - Unit: **seconds** (matches the `Timeline.time` format `"mm:ss"`).
 - The SDK matches the overlay marker **by exact second** (`startTimeShowOverlay == time`), so ticks
@@ -324,6 +449,8 @@ handler.removeCallbacks(tick)
 The server may send a `ckst` event to ask the client whether it is playing or paused. To respond
 accurately, register:
 
+<Tabs items={['Kotlin', 'Java']}>
+  <Tabs.Tab>
 ```kotlin
 overlayManager.addPlayerListener(object : PlayerChangeListener {
     override suspend fun currentPosition(): Long = player.currentPosition
@@ -333,6 +460,24 @@ overlayManager.addPlayerListener(object : PlayerChangeListener {
         Pair(player.isPlaying, player.playbackState)
 })
 ```
+  </Tabs.Tab>
+  <Tabs.Tab>
+```java
+overlayManager.addPlayerListener(new PlayerChangeListener() {
+    @Override
+    public long currentPosition() {
+        return player.getCurrentPosition();
+    }
+
+    // first = isPlaying, second = state (1 = IDLE, 2 = BUFFERING, 3 = READY, 4 = ENDED)
+    @Override
+    public Pair<Boolean, Integer> onPlayerStateChanged() {
+        return new Pair<>(player.isPlaying(), player.getPlaybackState());
+    }
+});
+```
+  </Tabs.Tab>
+</Tabs>
 
 SDK mapping: `1 → "idle"`, `3 → "playing"/"paused"` based on `isPlaying`, otherwise → an empty
 string.
@@ -344,6 +489,8 @@ string.
 
 ## 11. Receiving events from the SDK
 
+<Tabs items={['Kotlin', 'Java']}>
+  <Tabs.Tab>
 ```kotlin
 class MainActivity : AppCompatActivity(), DefaultOverlayEventListener {
 
@@ -379,6 +526,54 @@ class MainActivity : AppCompatActivity(), DefaultOverlayEventListener {
     }
 }
 ```
+  </Tabs.Tab>
+  <Tabs.Tab>
+```java
+public class MainActivity extends AppCompatActivity implements DefaultOverlayEventListener {
+
+    /** The overlay requests an action that the app must handle */
+    @Override
+    public void onHandleMessage(EventOverlay msg) {
+        switch (msg) {
+            case NEED_LOGIN:
+                showLoginScreen();   // user tapped to answer while not logged in
+                break;
+            case NEED_PAY_ONG:
+                showTopUpScreen();   // server returned code PM402 (insufficient OnG)
+                break;
+            default:
+                break;
+        }
+    }
+
+    /** Realtime viewer count for the channel (only available on Live) */
+    @Override
+    public void onHandleLiveViews(int liveViews) {
+        tvViewers.setText(String.valueOf(liveViews));
+    }
+
+    /** Overlay opens/closes the stats section — use this to hide/show the app's UI if needed */
+    @Override
+    public void onShowITR(boolean show) { }
+
+    /**
+     * The overlay has finished loading (takeControl = true) or failed to load (webViewError = true).
+     * overlayConfig indicates whether it's a popup or inline, aligned top/bottom, and the height ratio.
+     */
+    @Override
+    public void onFocusOverlay(
+        boolean takeControl,
+        boolean webViewError,
+        OverlayConfig overlayConfig
+    ) {
+        if (overlayConfig != null && overlayConfig.getPopupOverlay()) {
+            // e.g.: push the player controls up so they aren't covered by the overlay
+        }
+    }
+}
+```
+  </Tabs.Tab>
+</Tabs>
 
 `DefaultOverlayEventListener` is just an alias for `OverlayEventListener` — you can implement
 either one, but **all 4 functions are required**.
@@ -387,6 +582,8 @@ either one, but **all 4 functions are required**.
 
 ## 12. Leaderboard
 
+<Tabs items={['Kotlin', 'Java']}>
+  <Tabs.Tab>
 ```kotlin
 overlayManager.showChartsInteractive(
     mediaId = "003c04ba-8f7d-4663-bef0-c7a971c059b6",
@@ -398,6 +595,21 @@ if (overlayManager.isDialogCharShowing()) {
     overlayManager.hideChartsInteractive()
 }
 ```
+  </Tabs.Tab>
+  <Tabs.Tab>
+```java
+overlayManager.showChartsInteractive(
+    "003c04ba-8f7d-4663-bef0-c7a971c059b6",
+    "355202",
+    "#139DED"   // optional, header hex color code
+);
+
+if (overlayManager.isDialogCharShowing()) {
+    overlayManager.hideChartsInteractive();
+}
+```
+  </Tabs.Tab>
+</Tabs>
 
 This dialog is a full-screen `DialogFragment` that automatically resizes for portrait/landscape
 and for tablets.

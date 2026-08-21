@@ -1,0 +1,30 @@
+# 快速开始
+
+快速指南:将 **Interactive SDK** 添加到你的应用并展示第一个悬浮层。
+
+<Callout type="warning">
+  还没看过[概览](/itr/getting-started/overview)?建议先阅读以了解 SDK 的整体架构。
+</Callout>
+
+## 1. 选择平台
+
+根据你的平台查看详细集成指南:
+
+- **Android** → 参见[安装与集成](/itr/android/installation_integration)
+- **iOS** → 参见[安装与集成](/itr/ios/installation_integration)
+
+## 2. 通用步骤
+
+1. **添加 SDK** 到项目中(源码模块或 `.aar`/framework 文件)。
+2. **初始化**悬浮层管理器(例如 Android 上的 `OverlayManager`),在视频播放页面中完成。
+3. **建立实时连接**:调用 token 初始化方法(`initToken`)并加入房间(`joinRoom`)以接收 Interactive 服务器的事件。
+4. **叠加悬浮层**到播放器之上:在视频区域声明悬浮层视图。
+5. **监听回调**:处理如 `NEED_LOGIN`、socket 状态变化或用户交互事件等状态。
+6. **测试**:在 staging/Interactive 服务器环境下验证悬浮层正确渲染,且 emit-ack 埋点正常工作。
+
+## 3. 下一步
+
+- 阅读 [SDK Interactive 架构](/itr/android/sdk_interactive_architecture) 了解各组件如何协同工作。
+- 阅读[详细流程](/itr/android/detailed_workflow) 了解一次交互会话的完整生命周期。
+- 查看 [API 参考](/itr/android/api_reference) 获取每个函数/回调的详细说明。
+- 若遇到集成问题,请查看[常见错误](/itr/android/error)。
