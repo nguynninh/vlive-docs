@@ -17,6 +17,12 @@ const meta = {
       pagination: false,
     },
   },
+  tracking_guide: {
+    title: "SDK Tracking Guide",
+    theme: {
+      pagination: false,
+    },
+  },
   update_sdk_5_0_0: {
     title: "Update SDK 5.0.0",
     theme: {

@@ -1,6 +1,6 @@
-# 03 — 详细工作流程
+import { Tabs } from 'nextra/components'
 
-[← 返回目录](README.md)
+# 03 — 详细工作流程
 
 本文档描述 SDK 的**每一个业务流程**，并附有时序图与分支条件，与当前源代码保持一致。
 
@@ -371,10 +371,20 @@ sequenceDiagram
 结构与 Predict 相似（`LuckyBtnView` + `LuckyDialog`，socket 事件 `lucky-event`，带
 `ACTIVE/INACTIVE/POWER/END`），**有一点关键不同**：
 
+<Tabs items={['Kotlin', 'Java']}>
+  <Tabs.Tab>
 ```kotlin
 // OverlayManager.genLuckyStuff() — 最后一行
 showLuckyDialog()
 ```
+  </Tabs.Tab>
+  <Tabs.Tab>
+```java
+// OverlayManager.genLuckyStuff() — 最后一行
+showLuckyDialog();
+```
+  </Tabs.Tab>
+</Tabs>
 
 → Lucky overlay 在收到后会**自动打开对话框**，无需等待用户点击按钮。
 

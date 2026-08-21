@@ -1,3 +1,5 @@
+import { Tabs } from 'nextra/components'
+
 # 02 — Cài đặt & Tích hợp
 
 ## 1. Yêu cầu môi trường
@@ -178,6 +180,8 @@ hơn khung video, overlay sẽ lệch khỏi vùng hình.
 Repo mẫu tính lại kích thước theo tỉ lệ 16:9 trong `onResume` / `onConfigurationChanged`
 (xem [MainActivity.kt:151](../app/src/main/java/com/vtvlive/example/MainActivity.kt:151)):
 
+<Tabs items={['Kotlin', 'Java']}>
+  <Tabs.Tab>
 ```kotlin
 private fun resizeContentView() {
     contentView.viewTreeObserver.addOnPreDrawListener(object : ViewTreeObserver.OnPreDrawListener {
@@ -191,11 +195,31 @@ private fun resizeContentView() {
     })
 }
 ```
+  </Tabs.Tab>
+  <Tabs.Tab>
+```java
+private void resizeContentView() {
+    contentView.getViewTreeObserver().addOnPreDrawListener(new ViewTreeObserver.OnPreDrawListener() {
+        @Override
+        public boolean onPreDraw() {
+            contentView.getViewTreeObserver().removeOnPreDrawListener(this);
+            int screenWidth = contentView.getWidth();
+            int calculatedHeight = (screenWidth * 9) / 16;
+            updateOverlayViewLayoutParams(screenWidth, contentView.getHeight(), calculatedHeight);
+            return true;
+        }
+    });
+}
+```
+  </Tabs.Tab>
+</Tabs>
 
 ---
 
 ## 6. Khởi tạo SDK
 
+<Tabs items={['Kotlin', 'Java']}>
+  <Tabs.Tab>
 ```kotlin
 class MainActivity : AppCompatActivity(), DefaultOverlayEventListener {
 
@@ -223,6 +247,38 @@ class MainActivity : AppCompatActivity(), DefaultOverlayEventListener {
     }
 }
 ```
+  </Tabs.Tab>
+  <Tabs.Tab>
+```java
+public class MainActivity extends AppCompatActivity implements DefaultOverlayEventListener {
+
+    private OverlayManager overlayManager;
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main);
+        initInteractive();
+    }
+
+    private void initInteractive() {
+        OverlayData overlayData = new OverlayData.Builder()
+            .setEnvironment(EnvInteractive.PROD)   // DEV | STG | PROD, mặc định PROD
+            .setTenantId("vtvlive")                // bắt buộc, do đội Interactive cấp
+            .setDebug(false)                       // tuỳ chọn
+            .build();
+
+        overlayManager = new OverlayManager(
+            /* activity  */ this,
+            /* overlayView */ findViewById(R.id.overlay_view),
+            /* overlayData */ overlayData,
+            /* listener */ this
+        );
+    }
+}
+```
+  </Tabs.Tab>
+</Tabs>
 
 Constructor **không mở kết nối mạng** — chỉ nạp cấu hình. Kết nối bắt đầu ở `joinRoom()`.
 
@@ -230,6 +286,8 @@ Constructor **không mở kết nối mạng** — chỉ nạp cấu hình. Kế
 
 ## 7. Khai báo phiên đăng nhập
 
+<Tabs items={['Kotlin', 'Java']}>
+  <Tabs.Tab>
 ```kotlin
 // Khi đăng nhập thành công
 overlayManager.initToken(
@@ -241,6 +299,21 @@ overlayManager.initToken(
 // Khi đăng xuất
 overlayManager.initToken("", "")
 ```
+  </Tabs.Tab>
+  <Tabs.Tab>
+```java
+// Khi đăng nhập thành công
+overlayManager.initToken(
+    accessToken,   // JWT (bắt đầu bằng "ey") hoặc cookie chuỗi
+    userId,        // id định danh người dùng
+    ""             // tuỳ chọn: tên BJ/kênh, hiển thị trong dialog fanclub
+);
+
+// Khi đăng xuất
+overlayManager.initToken("", "");
+```
+  </Tabs.Tab>
+</Tabs>
 
 Cơ chế:
 
@@ -253,6 +326,8 @@ Cơ chế:
 
 ## 8. Vào / rời nội dung
 
+<Tabs items={['Kotlin', 'Java']}>
+  <Tabs.Tab>
 ```kotlin
 // LIVE
 overlayManager.joinRoom(mediaId = "003c04ba-8f7d-4663-bef0-c7a971c059b6", type = 1)
@@ -263,6 +338,20 @@ overlayManager.joinRoom(mediaId = "4357747e-004c-4190-a3f3-4a33840a3c09", type =
 // Thoát nội dung / huỷ màn hình
 overlayManager.releaseAll()
 ```
+  </Tabs.Tab>
+  <Tabs.Tab>
+```java
+// LIVE
+overlayManager.joinRoom("003c04ba-8f7d-4663-bef0-c7a971c059b6", 1);
+
+// VOD
+overlayManager.joinRoom("4357747e-004c-4190-a3f3-4a33840a3c09", 2);
+
+// Thoát nội dung / huỷ màn hình
+overlayManager.releaseAll();
+```
+  </Tabs.Tab>
+</Tabs>
 
 - `type = 1` → LIVE (`Const.VIDEO_LIVE`), `type = 2` → VOD (`Const.VIDEO_VOD`).
 - `joinRoom` tự dọn phiên trước đó, nên chuyển kênh chỉ cần gọi lại.
@@ -270,11 +359,22 @@ overlayManager.releaseAll()
 
 **Kiểm tra nội dung có tương tác hay không trước khi vào phòng** (tuỳ chọn):
 
+<Tabs items={['Kotlin', 'Java']}>
+  <Tabs.Tab>
 ```kotlin
 overlayManager.fetchInteractiveStatus(mediaId) { isInteractive ->
     if (isInteractive) overlayManager.joinRoom(mediaId, type = 1)
 }
 ```
+  </Tabs.Tab>
+  <Tabs.Tab>
+```java
+overlayManager.fetchInteractiveStatus(mediaId, isInteractive -> {
+    if (isInteractive) overlayManager.joinRoom(mediaId, 1);
+});
+```
+  </Tabs.Tab>
+</Tabs>
 
 ---
 
@@ -282,6 +382,8 @@ overlayManager.fetchInteractiveStatus(mediaId) { isInteractive ->
 
 Với VOD, SDK **không tự biết** player đang ở giây thứ mấy. App phải bơm vào mỗi giây:
 
+<Tabs items={['Kotlin', 'Java']}>
+  <Tabs.Tab>
 ```kotlin
 private val handler = Handler(Looper.getMainLooper())
 private var seconds = 0
@@ -300,6 +402,29 @@ handler.post(tick)
 // dừng khi rời nội dung
 handler.removeCallbacks(tick)
 ```
+  </Tabs.Tab>
+  <Tabs.Tab>
+```java
+private Handler handler = new Handler(Looper.getMainLooper());
+private int seconds = 0;
+
+private Runnable tick = new Runnable() {
+    @Override
+    public void run() {
+        seconds = (int) (player.getCurrentPosition() / 1000);   // giây hiện tại của player
+        overlayManager.receiveTrackingTime(seconds);             // bơm vào SDK
+        handler.postDelayed(this, 1000L);
+    }
+};
+
+// bắt đầu sau khi joinRoom(type = 2)
+handler.post(tick);
+
+// dừng khi rời nội dung
+handler.removeCallbacks(tick);
+```
+  </Tabs.Tab>
+</Tabs>
 
 - Đơn vị: **giây** (khớp với `Timeline.time` dạng `"mm:ss"`).
 - SDK so khớp **bằng đúng giây** của mốc overlay (`startTimeShowOverlay == time`), nên **không được
@@ -312,6 +437,8 @@ handler.removeCallbacks(tick)
 
 Server có thể gửi sự kiện `ckst` để hỏi client đang phát hay dừng. Muốn trả lời chính xác, đăng ký:
 
+<Tabs items={['Kotlin', 'Java']}>
+  <Tabs.Tab>
 ```kotlin
 overlayManager.addPlayerListener(object : PlayerChangeListener {
     override suspend fun currentPosition(): Long = player.currentPosition
@@ -321,6 +448,24 @@ overlayManager.addPlayerListener(object : PlayerChangeListener {
         Pair(player.isPlaying, player.playbackState)
 })
 ```
+  </Tabs.Tab>
+  <Tabs.Tab>
+```java
+overlayManager.addPlayerListener(new PlayerChangeListener() {
+    @Override
+    public long currentPosition() {
+        return player.getCurrentPosition();
+    }
+
+    // first = isPlaying, second = state (1 = IDLE, 2 = BUFFERING, 3 = READY, 4 = ENDED)
+    @Override
+    public Pair<Boolean, Integer> onPlayerStateChanged() {
+        return new Pair<>(player.isPlaying(), player.getPlaybackState());
+    }
+});
+```
+  </Tabs.Tab>
+</Tabs>
 
 Ánh xạ của SDK: `1 → "idle"`, `3 → "playing"/"paused"` theo `isPlaying`, còn lại → chuỗi rỗng.
 
@@ -331,6 +476,8 @@ overlayManager.addPlayerListener(object : PlayerChangeListener {
 
 ## 11. Nhận sự kiện từ SDK
 
+<Tabs items={['Kotlin', 'Java']}>
+  <Tabs.Tab>
 ```kotlin
 class MainActivity : AppCompatActivity(), DefaultOverlayEventListener {
 
@@ -366,6 +513,54 @@ class MainActivity : AppCompatActivity(), DefaultOverlayEventListener {
     }
 }
 ```
+  </Tabs.Tab>
+  <Tabs.Tab>
+```java
+public class MainActivity extends AppCompatActivity implements DefaultOverlayEventListener {
+
+    /** Overlay yêu cầu hành động mà app phải xử lý */
+    @Override
+    public void onHandleMessage(EventOverlay msg) {
+        switch (msg) {
+            case NEED_LOGIN:
+                showLoginScreen();   // người dùng bấm trả lời khi chưa đăng nhập
+                break;
+            case NEED_PAY_ONG:
+                showTopUpScreen();   // server trả mã PM402 (thiếu OnG)
+                break;
+            default:
+                break;
+        }
+    }
+
+    /** Số người xem realtime của kênh (chỉ có ở Live) */
+    @Override
+    public void onHandleLiveViews(int liveViews) {
+        tvViewers.setText(String.valueOf(liveViews));
+    }
+
+    /** Overlay mở/đóng phần thống kê — dùng để ẩn/hiện UI của app nếu cần */
+    @Override
+    public void onShowITR(boolean show) { }
+
+    /**
+     * Overlay đã nạp xong (takeControl = true) hoặc lỗi tải (webViewError = true).
+     * overlayConfig cho biết đây là popup hay inline, canh trên/dưới, tỉ lệ chiều cao.
+     */
+    @Override
+    public void onFocusOverlay(
+        boolean takeControl,
+        boolean webViewError,
+        OverlayConfig overlayConfig
+    ) {
+        if (overlayConfig != null && overlayConfig.popupOverlay) {
+            // ví dụ: đẩy phần điều khiển player lên để không bị overlay che
+        }
+    }
+}
+```
+  </Tabs.Tab>
+</Tabs>
 
 `DefaultOverlayEventListener` chỉ là alias của `OverlayEventListener` — implement cái nào cũng được,
 nhưng **cả 4 hàm đều bắt buộc**.
@@ -374,6 +569,8 @@ nhưng **cả 4 hàm đều bắt buộc**.
 
 ## 12. Bảng xếp hạng
 
+<Tabs items={['Kotlin', 'Java']}>
+  <Tabs.Tab>
 ```kotlin
 overlayManager.showChartsInteractive(
     mediaId = "003c04ba-8f7d-4663-bef0-c7a971c059b6",
@@ -385,6 +582,21 @@ if (overlayManager.isDialogCharShowing()) {
     overlayManager.hideChartsInteractive()
 }
 ```
+  </Tabs.Tab>
+  <Tabs.Tab>
+```java
+overlayManager.showChartsInteractive(
+    "003c04ba-8f7d-4663-bef0-c7a971c059b6",
+    "355202",
+    "#139DED"   // tuỳ chọn, mã hex màu header
+);
+
+if (overlayManager.isDialogCharShowing()) {
+    overlayManager.hideChartsInteractive();
+}
+```
+  </Tabs.Tab>
+</Tabs>
 
 Dialog này là `DialogFragment` toàn màn hình, tự co giãn theo dọc/ngang và theo máy tablet.
 

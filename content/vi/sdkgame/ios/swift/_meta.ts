@@ -1,4 +1,10 @@
 const meta = {
+  integration_guide: {
+    title: "Hướng dẫn tích hợp SDK Swift",
+    theme: {
+      pagination: false,
+    },
+  },
   luong_dang_ky: {
     title: "Luồng đăng ký",
     theme: {

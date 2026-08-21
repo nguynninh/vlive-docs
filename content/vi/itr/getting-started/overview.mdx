@@ -1,0 +1,31 @@
+# Tổng quan
+
+**Interactive SDK** cho phép nhúng các lớp tương tác (overlay, mini-game, khảo sát, bình chọn...)
+lên trên trình phát video trong ứng dụng, kết nối realtime với server Interactive qua Socket.IO
+và đồng bộ trạng thái tương tác giữa client và backend.
+
+<Callout type="info">
+  Đây là mục **Getting Started** — điểm bắt đầu trước khi đi sâu vào tài liệu tích hợp riêng cho từng nền tảng Android/iOS.
+</Callout>
+
+## Tài liệu này dành cho ai?
+
+- Kỹ sư Android/iOS cần tích hợp SDK Interactive vào app đã có sẵn player.
+- Người cần hiểu kiến trúc tổng thể (client ⇄ Socket.IO ⇄ REST ⇄ CDN) trước khi tích hợp.
+- Người xử lý sự cố liên quan tới overlay, tracking emit-ack, hoặc luồng đăng nhập/đăng xuất.
+
+## Cấu trúc tài liệu
+
+| Mục | Nội dung |
+|---|---|
+| **Bắt đầu** | Tổng quan và hướng dẫn bắt đầu nhanh (trang này). |
+| **Android** | Kiến trúc SDK, cài đặt & tích hợp, luồng hoạt động, API reference, lỗi thường gặp, tracking. |
+| **iOS** | Tương tự Android, dành riêng cho nền tảng iOS (Swift). |
+
+## Yêu cầu trước khi bắt đầu
+
+- Ứng dụng đã có sẵn trình phát video (ExoPlayer, AVPlayer hoặc SDK phát khác).
+- Có `FragmentActivity`/`AppCompatActivity` (Android) hoặc `UIViewController` tương ứng (iOS) để gắn overlay.
+- Có thông tin kết nối tới server Interactive (endpoint Socket.IO, REST API, `X-TENANT-ID`).
+
+Tiếp theo, xem [Bắt đầu nhanh](/itr/getting-started/quick_start) để tích hợp nhanh SDK vào ứng dụng của bạn.

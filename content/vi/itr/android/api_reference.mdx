@@ -1,9 +1,13 @@
+import { Tabs } from 'nextra/components'
+
 # 04 — API Reference
 
 Tất cả API dưới đây thuộc package gốc `vn.interactive`.
 
 ## 1. `OverlayManager`
 
+<Tabs items={['Kotlin', 'Java']}>
+  <Tabs.Tab>
 ```kotlin
 class OverlayManager(
     activity: Activity,                              // phải là FragmentActivity/AppCompatActivity
@@ -12,6 +16,22 @@ class OverlayManager(
     overlayEventListener: OverlayEventListener? = null
 ) : OnOverlayListener, LifecycleOverlay
 ```
+  </Tabs.Tab>
+  <Tabs.Tab>
+```java
+class OverlayManager implements OnOverlayListener, LifecycleOverlay {
+    public OverlayManager(
+        Activity activity,                              // phải là FragmentActivity/AppCompatActivity
+        OverlayView overlayView,                        // view trong layout, phủ vùng video
+        OverlayData overlayData,                        // cấu hình môi trường + tenant
+        OverlayEventListener overlayEventListener        // có thể null
+    ) {
+        // ...
+    }
+}
+```
+  </Tabs.Tab>
+</Tabs>
 
 ### 1.1. Thuộc tính công khai
 
@@ -40,6 +60,8 @@ class OverlayManager(
 
 ## 2. `OverlayData` + `OverlayData.Builder`
 
+<Tabs items={['Kotlin', 'Java']}>
+  <Tabs.Tab>
 ```kotlin
 val overlayData = OverlayData.Builder()
     .setEnvironment(EnvInteractive.PROD)   // mặc định PROD
@@ -47,6 +69,17 @@ val overlayData = OverlayData.Builder()
     .setDebug(false)                       // mặc định false
     .build()
 ```
+  </Tabs.Tab>
+  <Tabs.Tab>
+```java
+OverlayData overlayData = new OverlayData.Builder()
+    .setEnvironment(EnvInteractive.PROD)   // mặc định PROD
+    .setTenantId("vtvlive")                // mặc định "" — nên luôn set
+    .setDebug(false)                       // mặc định false
+    .build();
+```
+  </Tabs.Tab>
+</Tabs>
 
 | Thuộc tính | Kiểu | Mặc định | Ảnh hưởng |
 |---|---|---|---|
@@ -55,12 +88,23 @@ val overlayData = OverlayData.Builder()
 | `debug` | `Boolean` | `false` | Cờ dự phòng, hiện chưa đổi hành vi log (log phụ thuộc `BuildConfig.DEBUG` của SDK) |
 | `mediaId`, `userId` | `String?` | `null` | Được SDK gán khi mở bảng xếp hạng |
 
+<Tabs items={['Kotlin', 'Java']}>
+  <Tabs.Tab>
 ```kotlin
 enum class EnvInteractive { DEV, STG, PROD }
 ```
+  </Tabs.Tab>
+  <Tabs.Tab>
+```java
+enum EnvInteractive { DEV, STG, PROD }
+```
+  </Tabs.Tab>
+</Tabs>
 
 ## 3. `OverlayEventListener` / `DefaultOverlayEventListener`
 
+<Tabs items={['Kotlin', 'Java']}>
+  <Tabs.Tab>
 ```kotlin
 interface OverlayEventListener {
     fun onHandleMessage(msg: EventOverlay)
@@ -75,6 +119,22 @@ interface OverlayEventListener {
 
 interface DefaultOverlayEventListener : OverlayEventListener   // alias, không thêm hàm
 ```
+  </Tabs.Tab>
+  <Tabs.Tab>
+```java
+interface OverlayEventListener {
+    void onHandleMessage(EventOverlay msg);
+    void onHandleLiveViews(int liveViews);
+    void onShowITR(boolean show);
+    void onFocusOverlay(boolean takeControl, boolean webViewError, OverlayConfig overlayConfig);
+    // mặc định: takeControl = false, webViewError = false, overlayConfig = null
+}
+
+interface DefaultOverlayEventListener extends OverlayEventListener {   // alias, không thêm hàm
+}
+```
+  </Tabs.Tab>
+</Tabs>
 
 | Callback | Khi nào được gọi | Việc app nên làm |
 |---|---|---|
@@ -86,6 +146,8 @@ interface DefaultOverlayEventListener : OverlayEventListener   // alias, không 
 | `onFocusOverlay(webViewError = true, …)` | Lỗi tải trang / HTTP / SSL | Ghi log, có thể báo người dùng |
 | `onFocusOverlay(takeControl = false, …)` | Overlay bị gỡ (`INTERACTIVE_HIDE_ANALYTICS`) | Khôi phục layout |
 
+<Tabs items={['Kotlin', 'Java']}>
+  <Tabs.Tab>
 ```kotlin
 enum class EventOverlay {
     NEED_LOGIN,                  // SDK có phát
@@ -96,15 +158,41 @@ enum class EventOverlay {
     TAKE_FOCUS                   // đã khai báo, chưa dùng
 }
 ```
+  </Tabs.Tab>
+  <Tabs.Tab>
+```java
+enum EventOverlay {
+    NEED_LOGIN,                  // SDK có phát
+    NEED_PAY_ONG,                // SDK có phát
+    TOURNAMENT_BET,              // đã khai báo, chưa dùng
+    SUCCESSFUL_REPLY_SUBMITTED,  // đã khai báo, chưa dùng
+    FAILED_REPLY_SUBMITTED,      // đã khai báo, chưa dùng
+    TAKE_FOCUS                   // đã khai báo, chưa dùng
+}
+```
+  </Tabs.Tab>
+</Tabs>
 
 ## 4. `PlayerChangeListener`
 
+<Tabs items={['Kotlin', 'Java']}>
+  <Tabs.Tab>
 ```kotlin
 interface PlayerChangeListener {
     suspend fun currentPosition(): Long
     fun onPlayerStateChanged(): Pair<Boolean, Int>   // (isPlaying, playbackState)
 }
 ```
+  </Tabs.Tab>
+  <Tabs.Tab>
+```java
+interface PlayerChangeListener {
+    long currentPosition();
+    android.util.Pair<Boolean, Integer> onPlayerStateChanged();   // (isPlaying, playbackState)
+}
+```
+  </Tabs.Tab>
+</Tabs>
 
 `playbackState` theo quy ước ExoPlayer: `1 = IDLE`, `2 = BUFFERING`, `3 = READY`, `4 = ENDED`.
 SDK ánh xạ: `1 → "idle"`, `3 → isPlaying ? "playing" : "paused"`, còn lại → `""`.
@@ -145,17 +233,73 @@ App chỉ cần khai báo view này trong XML; các hàm còn lại do SDK dùng
 
 ### `Metadata` / `OverlayPosition` / `OverlaySize`
 
+<Tabs items={['Kotlin', 'Java']}>
+  <Tabs.Tab>
 ```kotlin
 data class Metadata(val pos: OverlayPosition, val size: OverlaySize)
 data class OverlayPosition(val x: Int, val y: Int, var alignment: OverlayAlignment? = null)
 data class OverlaySize(val w: Float, val h: Float)   // 0..1 — tỉ lệ so với OverlayView
 ```
+  </Tabs.Tab>
+  <Tabs.Tab>
+```java
+class Metadata {
+    private final OverlayPosition pos;
+    private final OverlaySize size;
+
+    public Metadata(OverlayPosition pos, OverlaySize size) {
+        this.pos = pos;
+        this.size = size;
+    }
+
+    public OverlayPosition getPos() { return pos; }
+    public OverlaySize getSize() { return size; }
+}
+
+class OverlayPosition {
+    private final int x;
+    private final int y;
+    private OverlayAlignment alignment;   // mặc định null
+
+    public OverlayPosition(int x, int y) {
+        this(x, y, null);
+    }
+
+    public OverlayPosition(int x, int y, OverlayAlignment alignment) {
+        this.x = x;
+        this.y = y;
+        this.alignment = alignment;
+    }
+
+    public int getX() { return x; }
+    public int getY() { return y; }
+    public OverlayAlignment getAlignment() { return alignment; }
+    public void setAlignment(OverlayAlignment alignment) { this.alignment = alignment; }
+}
+
+class OverlaySize {
+    private final float w;
+    private final float h;   // 0..1 — tỉ lệ so với OverlayView
+
+    public OverlaySize(float w, float h) {
+        this.w = w;
+        this.h = h;
+    }
+
+    public float getW() { return w; }
+    public float getH() { return h; }
+}
+```
+  </Tabs.Tab>
+</Tabs>
 
 `x`: `0` trái, `1` giữa, `2` phải. `y`: `0` trên, `1` giữa, `2` dưới →
 `OverlayAlignment.{LeftTop, LeftCenter, LeftBottom, CenterTop, Center, CenterBottom, RightTop, RightCenter, RightBottom}`.
 
 ### `OverlayConfig` — thông tin kèm callback `onFocusOverlay`
 
+<Tabs items={['Kotlin', 'Java']}>
+  <Tabs.Tab>
 ```kotlin
 data class OverlayConfig(
     val popupOverlay: Boolean = false,  // true nếu là overlay inline dạng dải trên/dưới
@@ -163,9 +307,36 @@ data class OverlayConfig(
     val ratio: Float = 0F               // tỉ lệ chiều cao so với OverlayView
 )
 ```
+  </Tabs.Tab>
+  <Tabs.Tab>
+```java
+class OverlayConfig {
+    private final boolean popupOverlay;  // true nếu là overlay inline dạng dải trên/dưới
+    private final String alignment;      // "top" | "bottom" | "left" | "right"
+    private final float ratio;           // tỉ lệ chiều cao so với OverlayView
+
+    public OverlayConfig() {
+        this(false, null, 0F);
+    }
+
+    public OverlayConfig(boolean popupOverlay, String alignment, float ratio) {
+        this.popupOverlay = popupOverlay;
+        this.alignment = alignment;
+        this.ratio = ratio;
+    }
+
+    public boolean isPopupOverlay() { return popupOverlay; }
+    public String getAlignment() { return alignment; }
+    public float getRatio() { return ratio; }
+}
+```
+  </Tabs.Tab>
+</Tabs>
 
 ### `ActionReportResponse`
 
+<Tabs items={['Kotlin', 'Java']}>
+  <Tabs.Tab>
 ```kotlin
 data class ActionReportResponse(
     var success: Boolean = false,
@@ -175,6 +346,34 @@ data class ActionReportResponse(
     var error: String? = null,
 )
 ```
+  </Tabs.Tab>
+  <Tabs.Tab>
+```java
+class ActionReportResponse {
+    private boolean success = false;
+    private ActionResponseMessage result = new ActionResponseMessage();  // message, status, description, data
+    private String failureReason = null;
+    private String failureStep = null;
+    private String error = null;
+
+    public boolean isSuccess() { return success; }
+    public void setSuccess(boolean success) { this.success = success; }
+
+    public ActionResponseMessage getResult() { return result; }
+    public void setResult(ActionResponseMessage result) { this.result = result; }
+
+    public String getFailureReason() { return failureReason; }
+    public void setFailureReason(String failureReason) { this.failureReason = failureReason; }
+
+    public String getFailureStep() { return failureStep; }
+    public void setFailureStep(String failureStep) { this.failureStep = failureStep; }
+
+    public String getError() { return error; }
+    public void setError(String error) { this.error = error; }
+}
+```
+  </Tabs.Tab>
+</Tabs>
 
 ## 7. Sự kiện Socket.IO
 
@@ -298,10 +497,20 @@ window.addEventListener("message", (e) => { /* e.data chứa key + data */ });
 
 ## 11. Hằng số hữu ích cho app
 
+<Tabs items={['Kotlin', 'Java']}>
+  <Tabs.Tab>
 ```kotlin
 Const.VIDEO_LIVE  // = 1
 Const.VIDEO_VOD   // = 2
 ```
+  </Tabs.Tab>
+  <Tabs.Tab>
+```java
+Const.VIDEO_LIVE;  // = 1
+Const.VIDEO_VOD;   // = 2
+```
+  </Tabs.Tab>
+</Tabs>
 
 Các biến toàn cục do SDK quản lý (app **không nên** ghi trực tiếp): `Const.USER_COOKIE`,
 `Const.USER_ID`, `Const.BJ_NAME`, `Const.IS_FAN_CLUB`, `Const.IS_VIP`, `Const.BET_AMOUNT`,

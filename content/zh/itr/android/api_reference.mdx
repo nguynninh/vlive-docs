@@ -1,6 +1,6 @@
-# 04 — API 参考
+import { Tabs } from 'nextra/components'
 
-[← 返回目录](README.md)
+# 04 — API 参考
 
 以下所有 API 均属于根包 `vn.interactive`。
 
@@ -8,6 +8,8 @@
 
 ## 1. `OverlayManager`
 
+<Tabs items={['Kotlin', 'Java']}>
+  <Tabs.Tab>
 ```kotlin
 class OverlayManager(
     activity: Activity,                              // 必须是 FragmentActivity/AppCompatActivity
@@ -16,6 +18,22 @@ class OverlayManager(
     overlayEventListener: OverlayEventListener? = null
 ) : OnOverlayListener, LifecycleOverlay
 ```
+  </Tabs.Tab>
+  <Tabs.Tab>
+```java
+class OverlayManager implements OnOverlayListener, LifecycleOverlay {
+    public OverlayManager(
+        Activity activity,                              // 必须是 FragmentActivity/AppCompatActivity
+        OverlayView overlayView,                        // 布局中的 view，覆盖在视频区域上
+        OverlayData overlayData,                        // 环境 + 租户 配置
+        OverlayEventListener overlayEventListener        // 可为 null
+    ) {
+        // ...
+    }
+}
+```
+  </Tabs.Tab>
+</Tabs>
 
 ### 1.1. 公开属性
 
@@ -46,6 +64,8 @@ class OverlayManager(
 
 ## 2. `OverlayData` + `OverlayData.Builder`
 
+<Tabs items={['Kotlin', 'Java']}>
+  <Tabs.Tab>
 ```kotlin
 val overlayData = OverlayData.Builder()
     .setEnvironment(EnvInteractive.PROD)   // 默认 PROD
@@ -53,6 +73,17 @@ val overlayData = OverlayData.Builder()
     .setDebug(false)                       // 默认 false
     .build()
 ```
+  </Tabs.Tab>
+  <Tabs.Tab>
+```java
+OverlayData overlayData = new OverlayData.Builder()
+    .setEnvironment(EnvInteractive.PROD)   // 默认 PROD
+    .setTenantId("vtvlive")                // 默认 "" —— 应始终设置
+    .setDebug(false)                       // 默认 false
+    .build();
+```
+  </Tabs.Tab>
+</Tabs>
 
 | 属性 | 类型 | 默认值 | 影响 |
 |---|---|---|---|
@@ -61,14 +92,25 @@ val overlayData = OverlayData.Builder()
 | `debug` | `Boolean` | `false` | 预留标志位，目前尚不影响日志行为（日志取决于 SDK 的 `BuildConfig.DEBUG`） |
 | `mediaId`、`userId` | `String?` | `null` | 在打开排行榜时由 SDK 赋值 |
 
+<Tabs items={['Kotlin', 'Java']}>
+  <Tabs.Tab>
 ```kotlin
 enum class EnvInteractive { DEV, STG, PROD }
 ```
+  </Tabs.Tab>
+  <Tabs.Tab>
+```java
+enum EnvInteractive { DEV, STG, PROD }
+```
+  </Tabs.Tab>
+</Tabs>
 
 ---
 
 ## 3. `OverlayEventListener` / `DefaultOverlayEventListener`
 
+<Tabs items={['Kotlin', 'Java']}>
+  <Tabs.Tab>
 ```kotlin
 interface OverlayEventListener {
     fun onHandleMessage(msg: EventOverlay)
@@ -83,6 +125,24 @@ interface OverlayEventListener {
 
 interface DefaultOverlayEventListener : OverlayEventListener   // 别名，未新增函数
 ```
+  </Tabs.Tab>
+  <Tabs.Tab>
+```java
+interface OverlayEventListener {
+    void onHandleMessage(EventOverlay msg);
+    void onHandleLiveViews(int liveViews);
+    void onShowITR(boolean show);
+    void onFocusOverlay(
+        boolean takeControl,       // 默认 false
+        boolean webViewError,      // 默认 false
+        OverlayConfig overlayConfig // 默认 null
+    );
+}
+
+interface DefaultOverlayEventListener extends OverlayEventListener {}   // 别名，未新增函数
+```
+  </Tabs.Tab>
+</Tabs>
 
 | 回调 | 何时触发 | app 应做的事 |
 |---|---|---|
@@ -94,6 +154,8 @@ interface DefaultOverlayEventListener : OverlayEventListener   // 别名，未�
 | `onFocusOverlay(webViewError = true, …)` | 页面加载失败 / HTTP / SSL 错误 | 记录日志，必要时提示用户 |
 | `onFocusOverlay(takeControl = false, …)` | overlay 被移除（`INTERACTIVE_HIDE_ANALYTICS`） | 恢复布局 |
 
+<Tabs items={['Kotlin', 'Java']}>
+  <Tabs.Tab>
 ```kotlin
 enum class EventOverlay {
     NEED_LOGIN,                  // SDK 会触发
@@ -104,17 +166,43 @@ enum class EventOverlay {
     TAKE_FOCUS                   // 已声明，尚未使用
 }
 ```
+  </Tabs.Tab>
+  <Tabs.Tab>
+```java
+enum EventOverlay {
+    NEED_LOGIN,                  // SDK 会触发
+    NEED_PAY_ONG,                // SDK 会触发
+    TOURNAMENT_BET,              // 已声明，尚未使用
+    SUCCESSFUL_REPLY_SUBMITTED,  // 已声明，尚未使用
+    FAILED_REPLY_SUBMITTED,      // 已声明，尚未使用
+    TAKE_FOCUS                   // 已声明，尚未使用
+}
+```
+  </Tabs.Tab>
+</Tabs>
 
 ---
 
 ## 4. `PlayerChangeListener`
 
+<Tabs items={['Kotlin', 'Java']}>
+  <Tabs.Tab>
 ```kotlin
 interface PlayerChangeListener {
     suspend fun currentPosition(): Long
     fun onPlayerStateChanged(): Pair<Boolean, Int>   // (isPlaying, playbackState)
 }
 ```
+  </Tabs.Tab>
+  <Tabs.Tab>
+```java
+interface PlayerChangeListener {
+    long currentPosition();
+    android.util.Pair<Boolean, Integer> onPlayerStateChanged();   // (isPlaying, playbackState)
+}
+```
+  </Tabs.Tab>
+</Tabs>
 
 `playbackState` 遵循 ExoPlayer 的约定：`1 = IDLE`、`2 = BUFFERING`、`3 = READY`、`4 = ENDED`。
 SDK 映射规则：`1 → "idle"`、`3 → isPlaying ? "playing" : "paused"`，其余 → `""`。
@@ -159,17 +247,73 @@ app 只需在 XML 中声明该 view；其余函数均由 SDK 内部使用。
 
 ### `Metadata` / `OverlayPosition` / `OverlaySize`
 
+<Tabs items={['Kotlin', 'Java']}>
+  <Tabs.Tab>
 ```kotlin
 data class Metadata(val pos: OverlayPosition, val size: OverlaySize)
 data class OverlayPosition(val x: Int, val y: Int, var alignment: OverlayAlignment? = null)
 data class OverlaySize(val w: Float, val h: Float)   // 0..1 —— 相对于 OverlayView 的比例
 ```
+  </Tabs.Tab>
+  <Tabs.Tab>
+```java
+class Metadata {
+    private final OverlayPosition pos;
+    private final OverlaySize size;
+
+    public Metadata(OverlayPosition pos, OverlaySize size) {
+        this.pos = pos;
+        this.size = size;
+    }
+
+    public OverlayPosition getPos() { return pos; }
+    public OverlaySize getSize() { return size; }
+}
+
+class OverlayPosition {
+    private final int x;
+    private final int y;
+    private OverlayAlignment alignment; // 默认 null
+
+    public OverlayPosition(int x, int y) {
+        this(x, y, null);
+    }
+
+    public OverlayPosition(int x, int y, OverlayAlignment alignment) {
+        this.x = x;
+        this.y = y;
+        this.alignment = alignment;
+    }
+
+    public int getX() { return x; }
+    public int getY() { return y; }
+    public OverlayAlignment getAlignment() { return alignment; }
+    public void setAlignment(OverlayAlignment alignment) { this.alignment = alignment; }
+}
+
+class OverlaySize {
+    private final float w;
+    private final float h;
+
+    public OverlaySize(float w, float h) {   // 0..1 —— 相对于 OverlayView 的比例
+        this.w = w;
+        this.h = h;
+    }
+
+    public float getW() { return w; }
+    public float getH() { return h; }
+}
+```
+  </Tabs.Tab>
+</Tabs>
 
 `x`：`0` 左，`1` 中，`2` 右。`y`：`0` 上，`1` 中，`2` 下 →
 `OverlayAlignment.{LeftTop, LeftCenter, LeftBottom, CenterTop, Center, CenterBottom, RightTop, RightCenter, RightBottom}`。
 
 ### `OverlayConfig` — 随 `onFocusOverlay` 回调附带的信息
 
+<Tabs items={['Kotlin', 'Java']}>
+  <Tabs.Tab>
 ```kotlin
 data class OverlayConfig(
     val popupOverlay: Boolean = false,  // true 表示为上/下条状内嵌 overlay
@@ -177,9 +321,36 @@ data class OverlayConfig(
     val ratio: Float = 0F               // 相对 OverlayView 的高度比例
 )
 ```
+  </Tabs.Tab>
+  <Tabs.Tab>
+```java
+class OverlayConfig {
+    private final boolean popupOverlay;  // true 表示为上/下条状内嵌 overlay
+    private final String alignment;      // "top" | "bottom" | "left" | "right"
+    private final float ratio;           // 相对 OverlayView 的高度比例
+
+    public OverlayConfig() {
+        this(false, null, 0F);
+    }
+
+    public OverlayConfig(boolean popupOverlay, String alignment, float ratio) {
+        this.popupOverlay = popupOverlay;
+        this.alignment = alignment;
+        this.ratio = ratio;
+    }
+
+    public boolean isPopupOverlay() { return popupOverlay; }
+    public String getAlignment() { return alignment; }
+    public float getRatio() { return ratio; }
+}
+```
+  </Tabs.Tab>
+</Tabs>
 
 ### `ActionReportResponse`
 
+<Tabs items={['Kotlin', 'Java']}>
+  <Tabs.Tab>
 ```kotlin
 data class ActionReportResponse(
     var success: Boolean = false,
@@ -189,6 +360,34 @@ data class ActionReportResponse(
     var error: String? = null,
 )
 ```
+  </Tabs.Tab>
+  <Tabs.Tab>
+```java
+class ActionReportResponse {
+    private boolean success = false;
+    private ActionResponseMessage result = new ActionResponseMessage();  // message、status、description、data
+    private String failureReason = null;
+    private String failureStep = null;
+    private String error = null;
+
+    public boolean isSuccess() { return success; }
+    public void setSuccess(boolean success) { this.success = success; }
+
+    public ActionResponseMessage getResult() { return result; }
+    public void setResult(ActionResponseMessage result) { this.result = result; }
+
+    public String getFailureReason() { return failureReason; }
+    public void setFailureReason(String failureReason) { this.failureReason = failureReason; }
+
+    public String getFailureStep() { return failureStep; }
+    public void setFailureStep(String failureStep) { this.failureStep = failureStep; }
+
+    public String getError() { return error; }
+    public void setError(String error) { this.error = error; }
+}
+```
+  </Tabs.Tab>
+</Tabs>
 
 ---
 
@@ -320,10 +519,20 @@ window.addEventListener("message", (e) => { /* e.data 包含 key + data */ });
 
 ## 11. 供 app 使用的常量
 
+<Tabs items={['Kotlin', 'Java']}>
+  <Tabs.Tab>
 ```kotlin
 Const.VIDEO_LIVE  // = 1
 Const.VIDEO_VOD   // = 2
 ```
+  </Tabs.Tab>
+  <Tabs.Tab>
+```java
+Const.VIDEO_LIVE;  // = 1
+Const.VIDEO_VOD;   // = 2
+```
+  </Tabs.Tab>
+</Tabs>
 
 由 SDK 管理的全局变量（app **不应**直接写入）：`Const.USER_COOKIE`、
 `Const.USER_ID`、`Const.BJ_NAME`、`Const.IS_FAN_CLUB`、`Const.IS_VIP`、`Const.BET_AMOUNT`、

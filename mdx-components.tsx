@@ -1,6 +1,16 @@
+import { Callout } from "nextra/components";
 import { useMDXComponents as getDocsMDXComponents } from "nextra-theme-docs";
 import type { ComponentPropsWithoutRef, ComponentType } from "react";
 import { Markmap } from "./components/Markmap";
+import { MermaidFrame } from "./components/MermaidFrame";
+
+function DocsTable(props: ComponentPropsWithoutRef<"table">) {
+  return (
+    <div className="docs-table-wrapper">
+      <table {...props} />
+    </div>
+  );
+}
 
 const docsComponents = getDocsMDXComponents();
 type DocsPreProps = ComponentPropsWithoutRef<"pre"> & {
@@ -42,7 +52,10 @@ export function useMDXComponents(components: Record<string, unknown> = {}) {
   return {
     ...docsComponents,
     Markmap,
+    MermaidFrame,
+    Callout,
     pre: DocsPre,
+    table: DocsTable,
     ...components,
   };
 }
