@@ -22,7 +22,7 @@
 ## 总体流程图
 
 ```mermaid
-flowchart TD
+flowchart LR
     A([登出请求]) --> B{登出类型}
 
     B -- "主动：logout()" --> C["POST PATH_LOGOUT<br/>token = refreshToken<br/>token_type_hint = refresh_token<br/>client_id + client_secret"]

@@ -23,7 +23,7 @@ locked / session revoked elsewhere).
 ## Overview diagram
 
 ```mermaid
-flowchart TD
+flowchart LR
     A([Logout requested]) --> B{Logout type}
 
     B -- "Active: logout()" --> C["POST PATH_LOGOUT<br/>token = refreshToken<br/>token_type_hint = refresh_token<br/>client_id + client_secret"]

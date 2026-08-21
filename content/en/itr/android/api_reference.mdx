@@ -1,6 +1,6 @@
-# 04 — API Reference
+import { Tabs } from 'nextra/components'
 
-[← Back to table of contents](README.md)
+# 04 — API Reference
 
 All APIs below belong to the root package `vn.interactive`.
 
@@ -8,6 +8,8 @@ All APIs below belong to the root package `vn.interactive`.
 
 ## 1. `OverlayManager`
 
+<Tabs items={['Kotlin', 'Java']}>
+  <Tabs.Tab>
 ```kotlin
 class OverlayManager(
     activity: Activity,                              // must be FragmentActivity/AppCompatActivity
@@ -16,6 +18,26 @@ class OverlayManager(
     overlayEventListener: OverlayEventListener? = null
 ) : OnOverlayListener, LifecycleOverlay
 ```
+  </Tabs.Tab>
+  <Tabs.Tab>
+```java
+class OverlayManager implements OnOverlayListener, LifecycleOverlay {
+    public OverlayManager(
+        Activity activity,                              // must be FragmentActivity/AppCompatActivity
+        OverlayView overlayView,                        // the view in the layout that covers the video area
+        OverlayData overlayData,                        // environment + tenant configuration
+        OverlayEventListener overlayEventListener
+    ) {
+        // ...
+    }
+
+    public OverlayManager(Activity activity, OverlayView overlayView, OverlayData overlayData) {
+        this(activity, overlayView, overlayData, null);
+    }
+}
+```
+  </Tabs.Tab>
+</Tabs>
 
 ### 1.1. Public properties
 
@@ -47,6 +69,8 @@ class OverlayManager(
 
 ## 2. `OverlayData` + `OverlayData.Builder`
 
+<Tabs items={['Kotlin', 'Java']}>
+  <Tabs.Tab>
 ```kotlin
 val overlayData = OverlayData.Builder()
     .setEnvironment(EnvInteractive.PROD)   // default PROD
@@ -54,6 +78,17 @@ val overlayData = OverlayData.Builder()
     .setDebug(false)                       // default false
     .build()
 ```
+  </Tabs.Tab>
+  <Tabs.Tab>
+```java
+OverlayData overlayData = new OverlayData.Builder()
+    .setEnvironment(EnvInteractive.PROD)   // default PROD
+    .setTenantId("vtvlive")                // default "" — should always be set
+    .setDebug(false)                       // default false
+    .build();
+```
+  </Tabs.Tab>
+</Tabs>
 
 | Property | Type | Default | Effect |
 |---|---|---|---|
@@ -62,14 +97,25 @@ val overlayData = OverlayData.Builder()
 | `debug` | `Boolean` | `false` | Reserved flag, currently does not change logging behavior (logging depends on the SDK's own `BuildConfig.DEBUG`) |
 | `mediaId`, `userId` | `String?` | `null` | Assigned by the SDK when opening the leaderboard |
 
+<Tabs items={['Kotlin', 'Java']}>
+  <Tabs.Tab>
 ```kotlin
 enum class EnvInteractive { DEV, STG, PROD }
 ```
+  </Tabs.Tab>
+  <Tabs.Tab>
+```java
+enum EnvInteractive { DEV, STG, PROD }
+```
+  </Tabs.Tab>
+</Tabs>
 
 ---
 
 ## 3. `OverlayEventListener` / `DefaultOverlayEventListener`
 
+<Tabs items={['Kotlin', 'Java']}>
+  <Tabs.Tab>
 ```kotlin
 interface OverlayEventListener {
     fun onHandleMessage(msg: EventOverlay)
@@ -84,6 +130,25 @@ interface OverlayEventListener {
 
 interface DefaultOverlayEventListener : OverlayEventListener   // alias, adds no functions
 ```
+  </Tabs.Tab>
+  <Tabs.Tab>
+```java
+interface OverlayEventListener {
+    void onHandleMessage(EventOverlay msg);
+    void onHandleLiveViews(int liveViews);
+    void onShowITR(boolean show);
+    void onFocusOverlay(boolean takeControl, boolean webViewError, OverlayConfig overlayConfig);
+    // Java has no default parameter values; overload as needed, e.g.:
+    default void onFocusOverlay() {
+        onFocusOverlay(false, false, null);
+    }
+}
+
+interface DefaultOverlayEventListener extends OverlayEventListener {   // alias, adds no functions
+}
+```
+  </Tabs.Tab>
+</Tabs>
 
 | Callback | When it is called | What the app should do |
 |---|---|---|
@@ -95,6 +160,8 @@ interface DefaultOverlayEventListener : OverlayEventListener   // alias, adds no
 | `onFocusOverlay(webViewError = true, …)` | Page load / HTTP / SSL error | Log it, optionally notify the user |
 | `onFocusOverlay(takeControl = false, …)` | The overlay is removed (`INTERACTIVE_HIDE_ANALYTICS`) | Restore the layout |
 
+<Tabs items={['Kotlin', 'Java']}>
+  <Tabs.Tab>
 ```kotlin
 enum class EventOverlay {
     NEED_LOGIN,                  // emitted by the SDK
@@ -105,17 +172,43 @@ enum class EventOverlay {
     TAKE_FOCUS                   // declared, not yet used
 }
 ```
+  </Tabs.Tab>
+  <Tabs.Tab>
+```java
+enum EventOverlay {
+    NEED_LOGIN,                  // emitted by the SDK
+    NEED_PAY_ONG,                // emitted by the SDK
+    TOURNAMENT_BET,              // declared, not yet used
+    SUCCESSFUL_REPLY_SUBMITTED,  // declared, not yet used
+    FAILED_REPLY_SUBMITTED,      // declared, not yet used
+    TAKE_FOCUS                   // declared, not yet used
+}
+```
+  </Tabs.Tab>
+</Tabs>
 
 ---
 
 ## 4. `PlayerChangeListener`
 
+<Tabs items={['Kotlin', 'Java']}>
+  <Tabs.Tab>
 ```kotlin
 interface PlayerChangeListener {
     suspend fun currentPosition(): Long
     fun onPlayerStateChanged(): Pair<Boolean, Int>   // (isPlaying, playbackState)
 }
 ```
+  </Tabs.Tab>
+  <Tabs.Tab>
+```java
+interface PlayerChangeListener {
+    long currentPosition();
+    android.util.Pair<Boolean, Integer> onPlayerStateChanged();   // (isPlaying, playbackState)
+}
+```
+  </Tabs.Tab>
+</Tabs>
 
 `playbackState` follows the ExoPlayer convention: `1 = IDLE`, `2 = BUFFERING`, `3 = READY`, `4 = ENDED`.
 The SDK maps: `1 → "idle"`, `3 → isPlaying ? "playing" : "paused"`, everything else → `""`.
@@ -160,17 +253,72 @@ The app only needs to declare this view in XML; the remaining functions are used
 
 ### `Metadata` / `OverlayPosition` / `OverlaySize`
 
+<Tabs items={['Kotlin', 'Java']}>
+  <Tabs.Tab>
 ```kotlin
 data class Metadata(val pos: OverlayPosition, val size: OverlaySize)
 data class OverlayPosition(val x: Int, val y: Int, var alignment: OverlayAlignment? = null)
 data class OverlaySize(val w: Float, val h: Float)   // 0..1 — ratio relative to OverlayView
 ```
+  </Tabs.Tab>
+  <Tabs.Tab>
+```java
+class Metadata {
+    private final OverlayPosition pos;
+    private final OverlaySize size;
+
+    public Metadata(OverlayPosition pos, OverlaySize size) {
+        this.pos = pos;
+        this.size = size;
+    }
+
+    public OverlayPosition getPos() { return pos; }
+    public OverlaySize getSize() { return size; }
+}
+
+class OverlayPosition {
+    private final int x;
+    private final int y;
+    private OverlayAlignment alignment;
+
+    public OverlayPosition(int x, int y) {
+        this(x, y, null);
+    }
+
+    public OverlayPosition(int x, int y, OverlayAlignment alignment) {
+        this.x = x;
+        this.y = y;
+        this.alignment = alignment;
+    }
+
+    public int getX() { return x; }
+    public int getY() { return y; }
+    public OverlayAlignment getAlignment() { return alignment; }
+}
+
+class OverlaySize {
+    private final float w;
+    private final float h;   // 0..1 — ratio relative to OverlayView
+
+    public OverlaySize(float w, float h) {
+        this.w = w;
+        this.h = h;
+    }
+
+    public float getW() { return w; }
+    public float getH() { return h; }
+}
+```
+  </Tabs.Tab>
+</Tabs>
 
 `x`: `0` left, `1` center, `2` right. `y`: `0` top, `1` middle, `2` bottom →
 `OverlayAlignment.{LeftTop, LeftCenter, LeftBottom, CenterTop, Center, CenterBottom, RightTop, RightCenter, RightBottom}`.
 
 ### `OverlayConfig` — info passed along with the `onFocusOverlay` callback
 
+<Tabs items={['Kotlin', 'Java']}>
+  <Tabs.Tab>
 ```kotlin
 data class OverlayConfig(
     val popupOverlay: Boolean = false,  // true if this is an inline top/bottom strip overlay
@@ -178,9 +326,36 @@ data class OverlayConfig(
     val ratio: Float = 0F               // height ratio relative to OverlayView
 )
 ```
+  </Tabs.Tab>
+  <Tabs.Tab>
+```java
+class OverlayConfig {
+    private final boolean popupOverlay;  // true if this is an inline top/bottom strip overlay
+    private final String alignment;      // "top" | "bottom" | "left" | "right"
+    private final float ratio;           // height ratio relative to OverlayView
+
+    public OverlayConfig() {
+        this(false, null, 0F);
+    }
+
+    public OverlayConfig(boolean popupOverlay, String alignment, float ratio) {
+        this.popupOverlay = popupOverlay;
+        this.alignment = alignment;
+        this.ratio = ratio;
+    }
+
+    public boolean isPopupOverlay() { return popupOverlay; }
+    public String getAlignment() { return alignment; }
+    public float getRatio() { return ratio; }
+}
+```
+  </Tabs.Tab>
+</Tabs>
 
 ### `ActionReportResponse`
 
+<Tabs items={['Kotlin', 'Java']}>
+  <Tabs.Tab>
 ```kotlin
 data class ActionReportResponse(
     var success: Boolean = false,
@@ -190,6 +365,36 @@ data class ActionReportResponse(
     var error: String? = null,
 )
 ```
+  </Tabs.Tab>
+  <Tabs.Tab>
+```java
+class ActionReportResponse {
+    private boolean success = false;
+    private ActionResponseMessage result = new ActionResponseMessage();  // message, status, description, data
+    private String failureReason = null;
+    private String failureStep = null;
+    private String error = null;
+
+    public ActionReportResponse() {
+    }
+
+    public ActionReportResponse(boolean success, ActionResponseMessage result, String failureReason, String failureStep, String error) {
+        this.success = success;
+        this.result = result;
+        this.failureReason = failureReason;
+        this.failureStep = failureStep;
+        this.error = error;
+    }
+
+    public boolean isSuccess() { return success; }
+    public ActionResponseMessage getResult() { return result; }
+    public String getFailureReason() { return failureReason; }
+    public String getFailureStep() { return failureStep; }
+    public String getError() { return error; }
+}
+```
+  </Tabs.Tab>
+</Tabs>
 
 ---
 
@@ -321,10 +526,20 @@ window.addEventListener("message", (e) => { /* e.data contains key + data */ });
 
 ## 11. Constants useful to the app
 
+<Tabs items={['Kotlin', 'Java']}>
+  <Tabs.Tab>
 ```kotlin
 Const.VIDEO_LIVE  // = 1
 Const.VIDEO_VOD   // = 2
 ```
+  </Tabs.Tab>
+  <Tabs.Tab>
+```java
+Const.VIDEO_LIVE;  // = 1
+Const.VIDEO_VOD;   // = 2
+```
+  </Tabs.Tab>
+</Tabs>
 
 Global variables managed by the SDK (the app **should not** write to them directly): `Const.USER_COOKIE`,
 `Const.USER_ID`, `Const.BJ_NAME`, `Const.IS_FAN_CLUB`, `Const.IS_VIP`, `Const.BET_AMOUNT`,

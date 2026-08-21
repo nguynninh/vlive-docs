@@ -1,3 +1,5 @@
+import { Tabs } from 'nextra/components'
+
 # 03 — Luồng hoạt động chi tiết
 
 Tài liệu này mô tả **từng luồng nghiệp vụ** của SDK, kèm sơ đồ tuần tự và điều kiện rẽ nhánh đúng
@@ -359,10 +361,20 @@ Nút chỉ hiện khi `isPredictOn && isPredictActive`.
 Cấu trúc giống Predict (`LuckyBtnView` + `LuckyDialog`, sự kiện socket `lucky-event` với
 `ACTIVE/INACTIVE/POWER/END`), **khác một điểm quan trọng**:
 
+<Tabs items={['Kotlin', 'Java']}>
+  <Tabs.Tab>
 ```kotlin
 // OverlayManager.genLuckyStuff() — dòng cuối
 showLuckyDialog()
 ```
+  </Tabs.Tab>
+  <Tabs.Tab>
+```java
+// OverlayManager.genLuckyStuff() — dòng cuối
+showLuckyDialog();
+```
+  </Tabs.Tab>
+</Tabs>
 
 → Overlay lucky **tự mở dialog ngay khi nhận được**, không chờ người dùng bấm nút.
 

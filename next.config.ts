@@ -1,11 +1,12 @@
 import type { NextConfig } from "next";
 import nextra from "nextra";
 import { remarkMarkmap } from "./lib/remark-markmap.mjs";
+import { remarkMermaidFrame } from "./lib/remark-mermaid-frame.mjs";
 
 const withNextra = nextra({
   unstable_shouldAddLocaleToLinks: true,
   mdxOptions: {
-    remarkPlugins: [remarkMarkmap],
+    remarkPlugins: [remarkMarkmap, remarkMermaidFrame],
   },
 });
 
